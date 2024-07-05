@@ -1,5 +1,6 @@
 from collections import Counter
 from pathlib import Path
+
 import matplotlib.pyplot as plt
 from matplotlib import style
 
@@ -8,10 +9,7 @@ from .paths import Paths
 style.use("ggplot")
 
 
-def path_size_chart(as_id: int, counter: Counter) -> Path:
-
-    counter = {int(k): v for k, v in counter.items()}
-
+def plot_as_path_size(as_id: str, counter: Counter[int]) -> Path:
     path_sizes = list(counter.keys())
     counts = list(counter.values())
 
@@ -21,12 +19,12 @@ def path_size_chart(as_id: int, counter: Counter) -> Path:
     plt.figure(figsize=(10, 6))
     plt.bar(path_sizes, counts)
 
-    plt.axhline(mean_path_size, linestyle='dashed', linewidth=1)
-    plt.text(max(path_sizes) * 0.8, mean_path_size + 0.5, f'Mean Path Size: {round(mean_path_size, 1)}')
+    plt.axvline(mean_path_size, color="black", linestyle='dashed', linewidth=1)
+    plt.text(mean_path_size + 0.1, max(counts) * 0.8, f'Mean Path Size: {round(mean_path_size, 1)}')
 
     plt.xlabel("Path Sizes")
     plt.ylabel("Count")
-    plt.title(f"Distribution of Path Sizes in AS {as_id}")
+    plt.title(f"Distribution of Path Sizes Originated from AS {as_id}")
     plt.xticks(path_sizes)
     plt.grid(True)
 

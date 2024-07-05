@@ -102,15 +102,18 @@ class Machine:
             dump(self, file)
         logger.info(f"Machine instance saved successfully at: {save_path}")
 
-    def as_path_size_chart(self, as_id: str | int) -> None:
-        if isinstance(as_id, str) and not as_id.isnumeric():
-            raise ValueError(f"Invalid AS identifier: '{as_id}' is not a valid integer.")
-
-        as_instance = self.known_as[str(as_id)]
+    def plot_as_path_size(self, as_id: str | int) -> None:
+        try:
+            as_instance = self.known_as[str(as_id)]
+        except KeyError:
+            raise KeyError(f"Couldn't find any record of AS '{as_id}'")
 
         logger.info(f"Plotting path size distribution for {as_instance}")
 
         save_path = analyse.path_size_chart(as_instance.id, as_instance.path_sizes)
+        save_path = analyse.plot_as_path_size(as_instance.id, as_instance.path_sizes)
+
+        logger.info(f"Chart saved at {save_path}")
 
         logger.info(f"Chart saved at {save_path}")
 
