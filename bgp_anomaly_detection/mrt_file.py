@@ -1,25 +1,24 @@
-from collections import Counter
 from copy import copy
 from datetime import datetime, timedelta
 from json import dump as json_dump, load as json_load
-from pickle import dump as pickle_dump, load as pickle_load
 from pathlib import Path
+from pickle import dump as pickle_dump, load as pickle_load
 
 from mrtparse import Reader, MRT_T, TD_V2_ST, BGP_ATTR_T, AS_PATH_SEG_T
 
-from .logging import *
 from .autonomous_system import AS
+from .logging import Logger
+from .paths import Paths
 
 peer = None
 
 
 class SnapShot:
     __slots__ = [
-        '_file_path', '_data_folder', '_dump_folder', '_parsed_folder', '_pickled_folder',
-        '_type', '_ts', '_flag', '_peer_ip',
-        '_peer_as', '_nlri', '_withdrawn', '_as_path',
-        '_next_hop', '_as4_path', '_export_to_file',
-        'known_as', 'snapshot_time'
+        '_file_path', '_type', '_ts', '_flag',
+        '_peer_ip', '_peer_as', '_nlri', '_withdrawn',
+        '_as_path', '_next_hop', '_as4_path',
+        '_export_to_file', 'known_as', 'snapshot_time'
     ]
 
     def __init__(self, file_path: str | Path) -> None:
@@ -32,7 +31,7 @@ class SnapShot:
         """
 
         self._file_path = Path(file_path)
-        file_extension = Path(file_path).suffix.lower()
+        file_extension = self._file_path.suffix.lower()
         if file_extension == ".pkl":
             self._import_pickle()
             return
@@ -44,14 +43,6 @@ class SnapShot:
 
         self.snapshot_time = datetime.strptime(date_time_str, '%Y%m%d%H%M')
         self.known_as: dict[str, AS] = dict()
-
-        self._data_folder = Path("data")
-        self._dump_folder = self._data_folder / "dumps"
-        self._parsed_folder = self._data_folder / "parsed"
-        self._pickled_folder = self._data_folder / "pickled"
-        self._dump_folder.mkdir(parents=True, exist_ok=True)
-        self._parsed_folder.mkdir(parents=True, exist_ok=True)
-        self._pickled_folder.mkdir(parents=True, exist_ok=True)
 
         self._type = str()
         self._flag = str()
@@ -71,12 +62,12 @@ class SnapShot:
             self._import_json()
 
     def __repr__(self) -> str:
-        """ Return the file name of the BGP data file. """
+        """Return the file name of the BGP data file."""
 
         return self._file_path.name
 
     def __eq__(self, snapshot_instance) -> bool:
-        """ Compare two SnapShot instances for equality based on their snapshot times. """
+        """Compare two SnapShot instances for equality based on their snapshot times."""
 
         if isinstance(snapshot_instance, SnapShot):
             return self.snapshot_time == snapshot_instance.snapshot_time
@@ -84,7 +75,7 @@ class SnapShot:
             return NotImplemented
 
     def __hash__(self) -> int:
-        """ Return a hash value based on the snapshot time. """
+        """Return a hash value based on the snapshot time."""
 
         return hash(self.snapshot_time)
 
@@ -134,7 +125,7 @@ class SnapShot:
             origin_as.announced_prefixes.add(prefix)
 
     def _import_json(self) -> None:
-        """ Import parsed AS data from a JSON file. """
+        """Import parsed AS data from a JSON file."""
 
         with open(self._file_path, "r") as input_file:
             input_data = json_load(input_file)
@@ -171,7 +162,7 @@ class SnapShot:
         :param prefix: The prefix being announced or withdrawn.
         """
 
-        with open(self._dump_folder / (self._file_path.stem + ".txt"), "a") as output:
+        with open(Paths.DUMP_DIR / (self._file_path.stem + ".txt"), "a") as output:
             if self._flag == 'B' or self._flag == 'A':
                 output.write('%s|%s|%s|%s|%s|%s|%s' % (
                     self._type, self._ts, self._flag, self._peer_ip, self._peer_as, prefix, self._merge_as_path()))
@@ -181,7 +172,7 @@ class SnapShot:
                     '%s|%s|%s|%s|%s|%s\n' % (self._type, self._ts, self._flag, self._peer_ip, self._peer_as, prefix))
 
     def _print_routes(self) -> None:
-        """ Process routes (withdrawn and announced) and either export or parse the data. """
+        """Process routes (withdrawn and announced) and either export or parse the data."""
 
         for withdrawn in self._withdrawn:
             if self._type == 'BGP4MP':
@@ -213,8 +204,12 @@ class SnapShot:
         st = list(m['subtype'])[0]
         if st == TD_V2_ST['PEER_INDEX_TABLE']:
             peer = copy(m['peer_entries'])
-        elif (st == TD_V2_ST['RIB_IPV4_UNICAST'] or st == TD_V2_ST['RIB_IPV4_MULTICAST'] or st == TD_V2_ST[
-            'RIB_IPV6_UNICAST'] or st == TD_V2_ST['RIB_IPV6_MULTICAST']):
+        elif (
+                st == TD_V2_ST['RIB_IPV4_UNICAST'] or
+                st == TD_V2_ST['RIB_IPV4_MULTICAST'] or
+                st == TD_V2_ST['RIB_IPV6_UNICAST'] or
+                st == TD_V2_ST['RIB_IPV6_MULTICAST']
+        ):
             self._nlri.append('%s/%d' % (m['prefix'], m['length']))
             for entry in m['rib_entries']:
 
@@ -291,7 +286,7 @@ class SnapShot:
             return ' '.join(self._as_path)
 
     def _iterate(self) -> None:
-        """ Iterate over messages in the BGP data file, processing them and logging progress. """
+        """Iterate over messages in the BGP data file, processing them and logging progress."""
 
         reader = Reader(str(self._file_path))
         start_time = datetime.now()
@@ -341,6 +336,9 @@ class SnapShot:
 
         if not destination_dir:
             destination_dir = self._parsed_folder
+            destination_dir = Paths.PARSED_DIR
+        else:
+            destination_dir = Path(destination_dir)
 
         logging.info(f"Exporting data to JSON")
 
@@ -365,10 +363,10 @@ class SnapShot:
         logging.info(f"Parsed data saved at: {parsed_data_file_path}")
 
     def export_pickle(self, destination_dir: str | Path = ""):
-        """ Save the SnapShot instance to a pickle file. """
+        """Save the SnapShot instance to a pickle file."""
 
         if not destination_dir:
-            destination_dir = self._pickled_folder
+            destination_dir = Paths.PICKLE_DIR
         else:
             destination_dir = Path(destination_dir)
 
@@ -378,9 +376,7 @@ class SnapShot:
         logging.info(f"SnapShot instance saved successfully at: {save_path}")
 
     def dump_to_txt(self) -> None:
-        """
-        Read an MRT format file (BGP routing data), process each message, and dump parsed information into a text file.
-        """
+        """Read an MRT format file, process each message, and dump parsed information into a text file."""
 
         logging.info(f"Starting dumping")
         self._export_to_file = True

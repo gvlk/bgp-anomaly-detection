@@ -4,6 +4,7 @@ from pickle import dump
 from .logging import *
 from .mrt_file import SnapShot
 from .autonomous_system import AS
+from .paths import Paths
 
 
 class Machine:
@@ -26,6 +27,7 @@ class Machine:
                     self.known_as[as_id] += snapshot.known_as[as_id]
 
         with open('as_sum.txt', 'w') as file:
+            predict_path = Paths.PRED_DIR / str(snapshot)
             for as_id, as_instance in self.known_as.items():
                 file.write(f"AS {as_id}:\n")
                 file.write(f"  Times Seen: {as_instance.times_seen}\n")
@@ -63,6 +65,7 @@ class Machine:
 
     def save(self):
         save_path = Path("model", "machine.pkl")
+        save_path = Paths.MODEL_DIR / "machine.pkl"
         with open(save_path, 'wb') as file:
             dump(self, file)
         logging.info(f"Machine instance saved successfully at: {save_path}")
