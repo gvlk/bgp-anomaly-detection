@@ -9,14 +9,17 @@ class Paths:
     PARSED_DIR_D = PARSED_DIR / "one_day"
     PARSED_DIR_M = PARSED_DIR / "one_month"
     PARSED_DIR_Y = PARSED_DIR / "one_year"
+    PARSED_DIR_VAL = PARSED_DIR / "val"
     PICKLE_DIR = DATA_DIR / "pickled"
     PICKLE_DIR_D = PICKLE_DIR / "one_day"
     PICKLE_DIR_M = PICKLE_DIR / "one_month"
     PICKLE_DIR_Y = PICKLE_DIR / "one_year"
+    PICKLE_DIR_VAL = PICKLE_DIR / "val"
     RAW_DIR = DATA_DIR / "raw"
     RAW_DIR_D = RAW_DIR / "one_day"
     RAW_DIR_M = RAW_DIR / "one_month"
     RAW_DIR_Y = RAW_DIR / "one_year"
+    RAW_DIR_VAL = RAW_DIR / "val"
     MODEL_DIR = Path("model")
     PRED_DIR = Path("predict")
 
