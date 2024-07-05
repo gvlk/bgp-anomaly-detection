@@ -2,6 +2,7 @@ from pathlib import Path
 from pickle import dump
 from typing import Union, Iterable
 
+from . import analyse
 from .autonomous_system import AS
 from .logging import Logger
 from .mrt_file import SnapShot
@@ -11,6 +12,7 @@ logger = Logger.get_logger(__name__)
 
 
 class Machine:
+    Results = dict[str, dict[str, float]]
 
     def __init__(self) -> None:
         self.known_as: dict[str, AS] = dict()
@@ -34,16 +36,24 @@ class Machine:
 
         logger.info(f"Finished training")
 
-    def predict(self, snapshot: SnapShot, save: bool = True) -> dict[str, float]:
+    def predict(self, snapshot: SnapShot, save: bool = True) -> Results:
+
         logger.info(f"Starting prediction for snapshot: {snapshot}")
 
-        predict = {key: float() for key in self.known_as}
+        predict = {
+            key: {
+                "mean": float(),
+                "difference": float()
+            }
+            for key in self.known_as
+        }
         snapshot_count = len(self.dataset)
         for as_id, as_instance in snapshot.known_as.items():
             if as_id in self.known_as:
                 times_seen_mean = self.known_as[as_id].times_seen / snapshot_count
                 times_seen_diff = (as_instance.times_seen - times_seen_mean) / times_seen_mean
-                predict[as_id] = times_seen_diff
+                predict[as_id]["mean"] = times_seen_mean
+                predict[as_id]["difference"] = times_seen_diff
 
         logger.info(f"Finished prediction")
 
@@ -53,12 +63,14 @@ class Machine:
                 for as_id, as_instance in snapshot.known_as.items():
                     file.write(f"{str(as_instance)}\n")
                     if as_id in predict:
-                        times_seen_diff = predict[as_id]
+                        times_seen_mean = predict[as_id]["mean"]
+                        times_seen_diff = predict[as_id]["difference"]
+                        times_seen_mean_str = str(round(times_seen_mean, 2))
                         if times_seen_diff >= 0:
                             times_seen_diff_str = "+" + str(round(times_seen_diff, 2))
                         else:
                             times_seen_diff_str = str(round(times_seen_diff, 2))
-                        file.write(f"  Times Seen: {times_seen_diff_str} from average\n")
+                        file.write(f"  Times Seen: {times_seen_diff_str} from average: {times_seen_mean_str}\n")
                     else:
                         file.write(f"  No data\n")
                     file.write("\n")
@@ -89,3 +101,15 @@ class Machine:
         with open(save_path, 'wb') as file:
             dump(self, file)
         logger.info(f"Machine instance saved successfully at: {save_path}")
+
+    def as_path_size_chart(self, as_id: str | int) -> None:
+        if isinstance(as_id, str) and not as_id.isnumeric():
+            raise ValueError(f"Invalid AS identifier: '{as_id}' is not a valid integer.")
+
+        as_instance = self.known_as[str(as_id)]
+
+        logger.info(f"Plotting path size distribution for {as_instance}")
+
+        save_path = analyse.path_size_chart(as_instance.id, as_instance.path_sizes)
+
+        logger.info(f"Chart saved at {save_path}")

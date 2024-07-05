@@ -1,12 +1,17 @@
-import bgp_anomaly_detection as bgpad
-from bgp_anomaly_detection import Paths
+import pickle
+
+from bgp_anomaly_detection import Paths, SnapShot, Machine
 
 
 def main():
-    for file in Paths.RAW_DIR.rglob("*.bz2"):
-        snapshot = bgpad.SnapShot(file)
-        destination_dir = Paths.PICKLE_DIR / file.parent.name
-        snapshot.export_pickle(destination_dir)
+    snapshot = SnapShot("data/parsed/val/rib.20240402.1200.json")
+
+    machine: Machine
+    with open(Paths.MODEL_DIR / "machine.pkl", "rb") as file:
+        machine = pickle.load(file)
+
+    result = machine.predict(snapshot, save=True)
+    machine.as_path_size_chart(151196)
 
 
 if __name__ == "__main__":
