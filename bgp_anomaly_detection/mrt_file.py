@@ -12,6 +12,8 @@ from .paths import Paths
 
 peer = None
 
+logger = Logger.get_logger(__name__)
+
 
 class SnapShot:
     __slots__ = [
@@ -130,7 +132,7 @@ class SnapShot:
         with open(self._file_path, "r") as input_file:
             input_data = json_load(input_file)
 
-        logging.info(f"Importing data from JSON file: {self._file_path}")
+        logger.info(f"Importing data from JSON file: {self._file_path}")
 
         self.known_as.clear()
         for as_id, as_data in input_data["as"]["as_info"].items():
@@ -143,17 +145,21 @@ class SnapShot:
             as_instance.neighbours = set(as_data["neighbour"]["neighbours"])
             self.known_as[as_id] = as_instance
 
-        logging.info(f"JSON data imported successfully")
+        logger.info(f"JSON data imported successfully")
 
     def _import_pickle(self) -> None:
         """ Load SnapShot instance from a pickle file. """
+        """Load SnapShot instance from a pickle file."""
+
+        logger.info(f"Loading SnapShot instance from: {self._file_path}")
+
         with open(self._file_path, "rb") as file:
             snapshot_instance = pickle_load(file)
 
         for slot in self.__slots__:
             setattr(self, slot, getattr(snapshot_instance, slot))
 
-        logging.info(f"SnapShot instance loaded successfully from: {self._file_path}")
+        logger.info(f"SnapShot instance loaded successfully")
 
     def _export_line(self, prefix) -> None:
         """
@@ -292,9 +298,9 @@ class SnapShot:
         start_time = datetime.now()
 
         if not self._export_to_file:
-            logging.info(f"Reading file: {self._file_path}")
+            logger.info(f"Reading file: {self._file_path}")
         else:
-            logging.info(f"Dumping file: {self._file_path}")
+            logger.info(f"Dumping file: {self._file_path}")
 
         total_messages = 1154829  # Average number of messages in a snapshot .bz2 file
         count = 0
@@ -322,25 +328,24 @@ class SnapShot:
                 estimated_minutes = estimated_time_left.seconds // 60
                 estimated_seconds = estimated_time_left.seconds % 60
 
-                logging.info(
+                logger.info(
                     f"{count} messages processed... Estimated time left: {estimated_minutes}:{estimated_seconds:02}"
                 )
 
         elapsed_time = datetime.now() - start_time
         elapsed_time_formatted = str(elapsed_time).split('.')[0]
-        logging.info(f"Total messages: {count}")
-        logging.info(f"Total time elapsed: {elapsed_time_formatted}")
+        logger.info(f"Total messages: {count}")
+        logger.info(f"Total time elapsed: {elapsed_time_formatted}")
 
     def export_json(self, destination_dir: str | Path = "") -> None:
-        """ Export parsed AS data to a JSON file. """
+        """Export parsed AS data to a JSON file."""
 
         if not destination_dir:
-            destination_dir = self._parsed_folder
             destination_dir = Paths.PARSED_DIR
         else:
             destination_dir = Path(destination_dir)
 
-        logging.info(f"Exporting data to JSON")
+        logger.info(f"Exporting data to JSON")
 
         formatted_date_time = self.snapshot_time.strftime('%d/%m/%Y %H:%M')
 
@@ -360,7 +365,7 @@ class SnapShot:
         with open(parsed_data_file_path, "w") as output:
             json_dump(output_data, output, indent=4)
 
-        logging.info(f"Parsed data saved at: {parsed_data_file_path}")
+        logger.info(f"Parsed data saved at: {parsed_data_file_path}")
 
     def export_pickle(self, destination_dir: str | Path = ""):
         """Save the SnapShot instance to a pickle file."""
@@ -370,15 +375,18 @@ class SnapShot:
         else:
             destination_dir = Path(destination_dir)
 
+        logger.info(f"Exporting instance to pickle file")
+
         save_path = destination_dir / (self._file_path.stem + ".pkl")
         with open(save_path, "wb") as file:
             pickle_dump(self, file)
-        logging.info(f"SnapShot instance saved successfully at: {save_path}")
+
+        logger.info(f"SnapShot instance saved successfully at: {save_path}")
 
     def dump_to_txt(self) -> None:
         """Read an MRT format file, process each message, and dump parsed information into a text file."""
 
-        logging.info(f"Starting dumping")
+        logger.info(f"Starting dumping")
         self._export_to_file = True
         self._iterate()
-        logging.info(f"Finished dumping. New file saved at '{self._dump_folder}'")
+        logger.info(f"Finished dumping. New file saved at '{Paths.DUMP_DIR}'")
