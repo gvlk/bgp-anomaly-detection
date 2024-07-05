@@ -16,11 +16,21 @@ logger = Logger.get_logger(__name__)
 
 
 class SnapShot:
+    """
+    Represents a snapshot of Border Gateway Protocol (BGP) data, facilitating import, processing, and export of
+    Autonomous System (AS) routing information from various file formats. Supported formats include .bz2 for raw BGP
+    data, .json or .csv for parsed AS data, and .pkl for serialized SnapShot instances.
+
+    The class parses BGP messages from the specified file, updating attributes such as snapshot time, AS paths,
+    prefixes, and peer information. Parsed AS information can be exported to JSON, CSV, or pickled formats for
+    further analysis or archival purposes.
+    """
+
     __slots__ = [
-        '_file_path', '_type', '_ts', '_flag',
-        '_peer_ip', '_peer_as', '_nlri', '_withdrawn',
-        '_as_path', '_next_hop', '_as4_path',
-        '_export_to_file', 'known_as', 'snapshot_time'
+        "_file_path", "_type", "_ts", "_flag",
+        "_peer_ip", "_peer_as", "_nlri", "_withdrawn",
+        "_as_path", "_next_hop", "_as4_path",
+        "_export_to_file", "known_as", "snapshot_time"
     ]
 
     def __init__(self, file_path: str | Path) -> None:
@@ -29,6 +39,7 @@ class SnapShot:
 
         - .bz2: Raw BGP data file
         - .json: JSON file containing parsed AS data
+        - ".csv": CSV file containing parsed AS data
         - .pkl: Pickle file containing a previously saved SnapShot instance
         """
 
@@ -59,7 +70,7 @@ class SnapShot:
         self._export_to_file = False
 
         if file_extension == ".bz2":
-            self._iterate()
+            self._import_bz2()
         elif file_extension == ".json":
             self._import_json()
 
@@ -80,6 +91,79 @@ class SnapShot:
         """Return a hash value based on the snapshot time."""
 
         return hash(self.snapshot_time)
+
+    def _import_bz2(self) -> None:
+        """Iterate over messages in the BGP data file, processing them and logging progress."""
+
+        reader = Reader(str(self._file_path))
+        start_time = datetime.now()
+
+        if not self._export_to_file:
+            logger.info(f"Reading file: {self._file_path}")
+        else:
+            logger.info(f"Dumping file: {self._file_path}")
+
+        total_messages = 1154829  # Average number of messages in a snapshot .bz2 file
+        count = 0
+
+        for m in reader:
+            if m.err:
+                continue
+
+            self._nlri = list()
+            t = list(m.data['type'])[0]
+            if t == MRT_T['TABLE_DUMP_V2']:
+                self._td_v2(m.data)
+            else:
+                print(f"This MRT Format {t} is not supported.")
+
+            count += 1
+            if count % 100000 == 0:
+                elapsed_time = datetime.now() - start_time
+                elapsed_seconds = elapsed_time.total_seconds()
+                messages_per_second = count / elapsed_seconds if elapsed_seconds > 0 else 0
+                messages_left = total_messages - count
+                estimated_seconds_left = messages_left / messages_per_second if messages_per_second > 0 else 0
+
+                estimated_time_left = timedelta(seconds=estimated_seconds_left)
+                estimated_minutes = estimated_time_left.seconds // 60
+                estimated_seconds = estimated_time_left.seconds % 60
+
+                logger.info(
+                    f"{count} messages processed... Estimated time left: {estimated_minutes}:{estimated_seconds:02}"
+                )
+
+        elapsed_time = datetime.now() - start_time
+        elapsed_time_formatted = str(elapsed_time).split('.')[0]
+        logger.info(f"Messages Total: {count}")
+        logger.info(f"Total time elapsed: {elapsed_time_formatted}")
+
+    def _import_json(self) -> None:
+        """Import parsed AS data from a JSON file."""
+
+        with open(self._file_path, "r") as input_file:
+            input_data = json_load(input_file)
+
+        logger.info(f"Importing data from JSON file: {self._file_path}")
+
+        for as_id, as_data in input_data["as"]["as_info"].items():
+            self.known_as[as_id] = AS(as_id)
+            self.known_as[as_id].import_data(as_data)
+
+        logger.info(f"JSON data imported successfully")
+
+    def _import_pickle(self) -> None:
+        """Load SnapShot instance from a pickle file."""
+
+        logger.info(f"Loading SnapShot instance from: {self._file_path}")
+
+        with open(self._file_path, "rb") as file:
+            snapshot_instance = pickle_load(file)
+
+        for slot in self.__slots__:
+            setattr(self, slot, getattr(snapshot_instance, slot))
+
+        logger.info(f"SnapShot instance loaded successfully")
 
     def _parse_data(self, prefix: str) -> None:
         """
@@ -125,34 +209,6 @@ class SnapShot:
             origin_as = self.known_as[origin_as_id]
             origin_as.path_sizes[len(path) - 1] += 1
             origin_as.announced_prefixes.add(prefix)
-
-    def _import_json(self) -> None:
-        """Import parsed AS data from a JSON file."""
-
-        with open(self._file_path, "r") as input_file:
-            input_data = json_load(input_file)
-
-        logger.info(f"Importing data from JSON file: {self._file_path}")
-
-        self.known_as.clear()
-        for as_id, as_data in input_data["as"]["as_info"].items():
-            self.known_as[as_id] = AS(as_id)
-            self.known_as[as_id].import_data(as_data)
-
-        logger.info(f"JSON data imported successfully")
-
-    def _import_pickle(self) -> None:
-        """Load SnapShot instance from a pickle file."""
-
-        logger.info(f"Loading SnapShot instance from: {self._file_path}")
-
-        with open(self._file_path, "rb") as file:
-            snapshot_instance = pickle_load(file)
-
-        for slot in self.__slots__:
-            setattr(self, slot, getattr(snapshot_instance, slot))
-
-        logger.info(f"SnapShot instance loaded successfully")
 
     def _export_line(self, prefix) -> None:
         """
@@ -284,54 +340,13 @@ class SnapShot:
         else:
             return ' '.join(self._as_path)
 
-    def _iterate(self) -> None:
-        """Iterate over messages in the BGP data file, processing them and logging progress."""
-
-        reader = Reader(str(self._file_path))
-        start_time = datetime.now()
-
-        if not self._export_to_file:
-            logger.info(f"Reading file: {self._file_path}")
-        else:
-            logger.info(f"Dumping file: {self._file_path}")
-
-        total_messages = 1154829  # Average number of messages in a snapshot .bz2 file
-        count = 0
-
-        for m in reader:
-            if m.err:
-                continue
-
-            self._nlri = []
-            t = list(m.data['type'])[0]
-            if t == MRT_T['TABLE_DUMP_V2']:
-                self._td_v2(m.data)
-            else:
-                print(f"This MRT Format {t} is not supported.")
-
-            count += 1
-            if count % 100000 == 0:
-                elapsed_time = datetime.now() - start_time
-                elapsed_seconds = elapsed_time.total_seconds()
-                messages_per_second = count / elapsed_seconds if elapsed_seconds > 0 else 0
-                messages_left = total_messages - count
-                estimated_seconds_left = messages_left / messages_per_second if messages_per_second > 0 else 0
-
-                estimated_time_left = timedelta(seconds=estimated_seconds_left)
-                estimated_minutes = estimated_time_left.seconds // 60
-                estimated_seconds = estimated_time_left.seconds % 60
-
-                logger.info(
-                    f"{count} messages processed... Estimated time left: {estimated_minutes}:{estimated_seconds:02}"
-                )
-
-        elapsed_time = datetime.now() - start_time
-        elapsed_time_formatted = str(elapsed_time).split('.')[0]
-        logger.info(f"Messages Total: {count}")
-        logger.info(f"Total time elapsed: {elapsed_time_formatted}")
-
     def export_json(self, destination_dir: str | Path = "") -> None:
-        """Export parsed AS data to a JSON file."""
+        """
+        Export parsed AS data to a JSON file.
+
+        :param destination_dir: Directory path where the JSON file will be saved.
+        :return: None
+        """
 
         if not destination_dir:
             destination_dir = Paths.PARSED_DIR

@@ -3,6 +3,11 @@ from typing import Self, Any
 
 
 class AS:
+    __slots__ = [
+        "id", "times_seen", "n_mid_path", "n_end_path",
+        "path_sizes", "announced_prefixes", "neighbours"
+    ]
+
     def __init__(self, as_id: str) -> None:
         try:
             int(as_id)
