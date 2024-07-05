@@ -4,6 +4,8 @@ This project is aimed at detecting anomalies in BGP (Border Gateway Protocol) da
 components of the system include the SnapShot class for handling BGP data files and the Machine class for training and
 predicting based on the BGP snapshots.
 
+BGP Snapshot File Archive: https://archive.routeviews.org/route-views3/bgpdata/
+
 ## Installation
 
 To use this project, you need to install the required dependencies. Assuming you have Python installed, you can set up
