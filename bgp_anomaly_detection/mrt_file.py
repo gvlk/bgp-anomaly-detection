@@ -352,6 +352,7 @@ class SnapShot:
             destination_dir = Paths.PARSED_DIR
         else:
             destination_dir = Path(destination_dir)
+            destination_dir.mkdir(exist_ok=True)
 
         logger.info(f"Exporting data to JSON")
 
@@ -369,11 +370,11 @@ class SnapShot:
             }
         }
 
-        parsed_data_file_path = destination_dir / (self._file_path.stem + ".json")
-        with open(parsed_data_file_path, "w") as output:
+        json_file_path = destination_dir / (self._file_path.stem + ".json")
+        with open(json_file_path, "w") as output:
             json_dump(output_data, output, indent=4)
 
-        logger.info(f"Parsed data saved at: {parsed_data_file_path}")
+        logger.info(f"Parsed data saved at: {json_file_path}")
 
     def export_csv(self, destination_dir: str | Path = "") -> None:
         pass
@@ -385,6 +386,7 @@ class SnapShot:
             destination_dir = Paths.PICKLE_DIR
         else:
             destination_dir = Path(destination_dir)
+            destination_dir.mkdir(exist_ok=True)
 
         logger.info(f"Exporting instance to pickle file")
 
