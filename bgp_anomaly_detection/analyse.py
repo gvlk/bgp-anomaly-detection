@@ -1,5 +1,5 @@
 from collections import Counter
-
+from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib import style
 
@@ -8,8 +8,8 @@ from .paths import Paths
 style.use("ggplot")
 
 
-def path_size_chart(as_id: int, counter: Counter):
-    # Convert any string keys in the counter to integers if possible
+def path_size_chart(as_id: int, counter: Counter) -> Path:
+
     counter = {int(k): v for k, v in counter.items()}
 
     path_sizes = list(counter.keys())
@@ -21,7 +21,6 @@ def path_size_chart(as_id: int, counter: Counter):
     plt.figure(figsize=(10, 6))
     plt.bar(path_sizes, counts)
 
-    # Plot mean path size as a horizontal line
     plt.axhline(mean_path_size, linestyle='dashed', linewidth=1)
     plt.text(max(path_sizes) * 0.8, mean_path_size + 0.5, f'Mean Path Size: {round(mean_path_size, 1)}')
 
@@ -35,4 +34,12 @@ def path_size_chart(as_id: int, counter: Counter):
     plt.savefig(save_path, dpi=300)
     plt.show()
 
-    return save_path  # Return the path where the chart is saved
+    return save_path
+
+def cdf(data) -> str:
+    plt.hist(data, normed=True, cumulative=True, label='CDF',
+             histtype='step', alpha=0.8, color='k')
+
+    save_path = Paths.CHART_DIR / f"cdf.png"
+    plt.savefig(save_path, dpi=300)
+    plt.show()

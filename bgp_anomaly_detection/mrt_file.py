@@ -327,7 +327,7 @@ class SnapShot:
 
         elapsed_time = datetime.now() - start_time
         elapsed_time_formatted = str(elapsed_time).split('.')[0]
-        logger.info(f"Total messages: {count}")
+        logger.info(f"Messages Total: {count}")
         logger.info(f"Total time elapsed: {elapsed_time_formatted}")
 
     def export_json(self, destination_dir: str | Path = "") -> None:
@@ -359,6 +359,9 @@ class SnapShot:
             json_dump(output_data, output, indent=4)
 
         logger.info(f"Parsed data saved at: {parsed_data_file_path}")
+
+    def export_csv(self, destination_dir: str | Path = "") -> None:
+        pass
 
     def export_pickle(self, destination_dir: str | Path = ""):
         """Save the SnapShot instance to a pickle file."""

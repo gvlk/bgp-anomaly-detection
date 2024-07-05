@@ -113,3 +113,15 @@ class Machine:
         save_path = analyse.path_size_chart(as_instance.id, as_instance.path_sizes)
 
         logger.info(f"Chart saved at {save_path}")
+
+    def as_cdf(self, as_id: str | int) -> None:
+        if isinstance(as_id, str) and not as_id.isnumeric():
+            raise ValueError(f"Invalid AS identifier: '{as_id}' is not a valid integer.")
+
+        data = []
+        as_instance = self.known_as[str(as_id)]
+
+        logger.info(f"Plotting cdf")
+
+        save_path = analyse.cdf(data)
+        logger.info(f"Chart saved at {save_path}")

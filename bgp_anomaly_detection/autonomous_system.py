@@ -74,5 +74,5 @@ class AS:
         total_paths = sum(self.path_sizes.values())
         if total_paths == 0:
             return 0.0
-        weighted_sum = sum(size * count for size, count in self.path_sizes.items())
+        weighted_sum = sum(int(size) * count for size, count in self.path_sizes.items())
         return weighted_sum / total_paths
