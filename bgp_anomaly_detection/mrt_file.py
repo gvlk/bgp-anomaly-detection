@@ -399,7 +399,7 @@ class SnapShot:
 
         logger.info(f"Starting dumping")
         self._export_to_file = True
-        self._iterate()
+        self._import_bz2()
         logger.info(f"Finished dumping. New file saved at '{Paths.DUMP_DIR}'")
 
     def reset(self) -> None:
