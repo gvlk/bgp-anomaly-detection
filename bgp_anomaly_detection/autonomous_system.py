@@ -1,5 +1,5 @@
-from typing import Self, Any
 from collections import Counter
+from typing import Self, Any
 
 
 class AS:
@@ -31,6 +31,14 @@ class AS:
             self.neighbours.update(as_instance.neighbours)
             return self
         return NotImplemented
+
+    def import_data(self, data: dict) -> None:
+        self.times_seen = data["times_seen"]
+        self.n_mid_path = data["path"]["n_mid_path"]
+        self.n_end_path = data["path"]["n_end_path"]
+        self.path_sizes = Counter(data["path"]["path_sizes"])
+        self.announced_prefixes = set(data["prefix"]["announced_prefixes"])
+        self.neighbours = set(data["neighbour"]["neighbours"])
 
     def export(self) -> dict[str, Any]:
         """Export AS data in a standardized format."""

@@ -136,14 +136,8 @@ class SnapShot:
 
         self.known_as.clear()
         for as_id, as_data in input_data["as"]["as_info"].items():
-            as_instance = AS(as_id)
-            as_instance.times_seen = as_data["times_seen"]
-            as_instance.n_mid_path = as_data["path"]["n_mid_path"]
-            as_instance.n_end_path = as_data["path"]["n_end_path"]
-            as_instance.path_sizes = Counter(as_data["path"]["path_sizes"])
-            as_instance.announced_prefixes = set(as_data["prefix"]["announced_prefixes"])
-            as_instance.neighbours = set(as_data["neighbour"]["neighbours"])
-            self.known_as[as_id] = as_instance
+            self.known_as[as_id] = AS(as_id)
+            self.known_as[as_id].import_data(as_data)
 
         logger.info(f"JSON data imported successfully")
 
