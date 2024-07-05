@@ -401,3 +401,21 @@ class SnapShot:
         self._export_to_file = True
         self._iterate()
         logger.info(f"Finished dumping. New file saved at '{Paths.DUMP_DIR}'")
+
+    def reset(self) -> None:
+        """
+        Reset all instance attributes to their initial state.
+        """
+        self._type = str()
+        self._flag = str()
+        self._peer_ip = str()
+        self._ts = int()
+        self._peer_as = int()
+        self._nlri = list()
+        self._withdrawn = list()
+        self._as_path = list()
+        self._next_hop = list()
+        self._as4_path = list()
+        self._export_to_file = False
+        self.known_as.clear()
+        self.snapshot_time = None
