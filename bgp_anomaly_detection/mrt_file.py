@@ -142,7 +142,6 @@ class SnapShot:
         logger.info(f"JSON data imported successfully")
 
     def _import_pickle(self) -> None:
-        """ Load SnapShot instance from a pickle file. """
         """Load SnapShot instance from a pickle file."""
 
         logger.info(f"Loading SnapShot instance from: {self._file_path}")
