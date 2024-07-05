@@ -2,6 +2,7 @@ import pickle
 
 from bgp_anomaly_detection import Paths, SnapShot, Machine
 
+# 2906 / 53066 / 6939
 
 def main():
     snapshot = SnapShot("data/parsed/val/rib.20240402.1200.json")
