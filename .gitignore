@@ -4,3 +4,4 @@ chart/*
 data/*
 model/*
 predict/*
+/bgp_anomaly_detection/tests/test_data/*
