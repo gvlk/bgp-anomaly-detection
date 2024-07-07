@@ -119,7 +119,6 @@ class SnapShot:
         else:
             logger.info(f"Dumping file: {self._file_path}")
 
-        total_messages = 1154829  # Average number of messages in a snapshot .bz2 file
         count = 0
 
         for m in reader:
@@ -222,7 +221,6 @@ class SnapShot:
             if as_id is None:
                 continue
             current_as = self.known_as[as_id]
-            current_as.times_seen += 1
 
             if i < len(path) - 1:
                 next_as_id = path[i + 1]
@@ -231,9 +229,9 @@ class SnapShot:
                     current_as.neighbours.add(next_as.id)
                     next_as.neighbours.add(current_as.id)
             if i == 0 or i == len(path) - 1:
-                current_as.n_end_path += 1
+                current_as.end_path_count += 1
             else:
-                current_as.n_mid_path += 1
+                current_as.mid_path_count += 1
 
         origin_as_id = path[-1]
         if origin_as_id is not None:
