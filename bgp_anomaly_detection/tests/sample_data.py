@@ -34,12 +34,16 @@ def generate_files(n_files: int, n_rows: int):
                 path_sizes.clear()
                 path_sizes = Counter({randint(1, 4): randint(1, 20) for _ in range(randint(0, 3))})
 
+            ipv4_count = int()
+            ipv6_count = int()
             announced_prefixes_set = set()
             while len(announced_prefixes_set) != path_sizes.total():
                 if random() <= 0.7:
                     announced_prefixes_set.add(fake.ipv4() + "/24")
+                    ipv4_count += 1
                 else:
                     announced_prefixes_set.add(fake.ipv6() + "/32")
+                    ipv6_count += 1
 
             neighbours_set = set()
             neighbours_set_len = randint(1, n_rows // 2)
@@ -55,7 +59,9 @@ def generate_files(n_files: int, n_rows: int):
                     "end_path_count": end_path_count,
                     "path_sizes": dumps(path_sizes) if path_sizes.total() > 0 else None,
                     "announced_prefixes": ";".join(announced_prefixes_set) if announced_prefixes_set else None,
-                    "neighbours": ";".join(neighbours_set) if neighbours_set else None
+                    "neighbours": ";".join(neighbours_set) if neighbours_set else None,
+                    "ipv4_count": ipv4_count,
+                    "ipv6_count": ipv6_count
                 }
             )
 
@@ -77,7 +83,10 @@ def generate_files(n_files: int, n_rows: int):
         random_date = fake.past_datetime().strftime("%Y%m%d.%H%M")
         file_path = Path("test_data", "rib." + random_date + ".csv")
         with open(file_path, mode="w", newline="") as file:
-            fieldnames = ["as_id", "mid_path_count", "end_path_count", "path_sizes", "announced_prefixes", "neighbours"]
+            fieldnames = [
+                "as_id", "mid_path_count", "end_path_count", "path_sizes",
+                "announced_prefixes", "neighbours", "ipv4_count", "ipv6_count"
+            ]
             writer = DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
             for row in rows:

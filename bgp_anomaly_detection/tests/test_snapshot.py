@@ -40,6 +40,8 @@ class TestSnapShot(TestCase):
             row_id = random_row["as_id"]
             row_mid_path_count = int(random_row["mid_path_count"])
             row_end_path_count = int(random_row["end_path_count"])
+            row_ipv4_count = int(random_row["ipv4_count"])
+            row_ipv6_count = int(random_row["ipv6_count"])
             if random_row["path_sizes"] != "":
                 row_path_sizes = Counter({int(k): v for k, v in loads(random_row["path_sizes"]).items()})
             else:
@@ -59,6 +61,8 @@ class TestSnapShot(TestCase):
 
             self.assertEqual(random_as.mid_path_count, row_mid_path_count)
             self.assertEqual(random_as.end_path_count, row_end_path_count)
+            self.assertEqual(random_as.ipv4_count, row_ipv4_count)
+            self.assertEqual(random_as.ipv6_count, row_ipv6_count)
             self.assertEqual(random_as.path_sizes, row_path_sizes)
             self.assertEqual(random_as.announced_prefixes, row_announced_prefixes)
             self.assertEqual(random_as.neighbours, row_neighbours)

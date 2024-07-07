@@ -1,4 +1,5 @@
 from collections import Counter
+from ipaddress import ip_address, IPv4Address
 from json import loads
 from typing import Self, Any
 
@@ -80,11 +81,17 @@ class AS:
 
     @property
     def ipv4_count(self) -> int:
-        return 0
+        return sum(
+            1 for prefix in self.announced_prefixes
+            if isinstance(ip_address(prefix.split('/')[0]), IPv4Address)
+        )
 
     @property
     def ipv6_count(self) -> int:
-        return 0
+        return sum(
+            1 for prefix in self.announced_prefixes
+            if not isinstance(ip_address(prefix.split('/')[0]), IPv4Address)
+        )
 
     @property
     def total_prefixes(self) -> int:
