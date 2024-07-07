@@ -79,7 +79,54 @@ class Machine:
 
         return predict
 
-    def export_data(self, output_file: str | Path) -> None:
+    def export_csv(self, output_file: str | Path) -> None:
+
+        output_file = output_file.with_suffix(".csv")
+
+        logger.info(f"Exporting data to {output_file}")
+
+        csv_data = list()
+        for as_id, as_instance in self.known_as.items():
+            if as_instance.path_sizes.total() > 0:
+                path_sizes = dumps(as_instance.path_sizes)
+            else:
+                path_sizes = None
+            if as_instance.announced_prefixes:
+                announced_prefixes = ";".join(as_instance.announced_prefixes)
+            else:
+                announced_prefixes = None
+            if as_instance.neighbours:
+                neighbours = ";".join(as_instance.neighbours)
+            else:
+                neighbours = None
+
+            csv_data.append({
+                "as_id": as_id,
+                "mid_path_count": as_instance.mid_path_count,
+                "end_path_count": as_instance.end_path_count,
+                "path_sizes": path_sizes,
+                "announced_prefixes": announced_prefixes,
+                "neighbours": neighbours
+            })
+
+        with open(output_file, mode='w', newline='') as csv_file:
+            fieldnames = [
+                "as_id",
+                "mid_path_count",
+                "end_path_count",
+                "path_sizes",
+                "announced_prefixes",
+                "neighbours"
+            ]
+            writer = DictWriter(csv_file, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(csv_data)
+
+        logger.info(f"Finished exporting")
+
+    def export_txt(self, output_file: str | Path) -> None:
+
+        output_file = output_file.with_suffix(".txt")
 
         logger.info(f"Exporting data to {output_file}")
 
