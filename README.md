@@ -88,7 +88,7 @@ predictions = machine.predict(new_snapshot)
 ### Export the model data
 
 ```python
-machine.export_data("path/to/exported_data.txt")
+machine.export_txt("path/to/exported_data.txt")
 ```
 
 ### Save the machine state
