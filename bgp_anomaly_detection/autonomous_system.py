@@ -101,6 +101,29 @@ class AS:
         self.announced_prefixes = set(data["prefix"]["announced_prefixes"])
         self.neighbours = set(data["neighbour"]["neighbours"])
 
+    def import_csv(self, data: dict[str, Any]) -> None:
+        """Organize and import AS data from a CSV row."""
+        self.mid_path_count = int(data["mid_path_count"])
+        self.end_path_count = int(data["end_path_count"])
+        self.path_sizes = (
+            Counter()) \
+            if data["path_sizes"] == "" \
+            else (
+            Counter({int(k): v for k, v in loads(data["path_sizes"]).items()})
+        )
+        self.announced_prefixes = (
+            set(data["announced_prefixes"].split(";"))) \
+            if data["announced_prefixes"] != "" \
+            else (
+            set()
+        )
+        self.neighbours = (
+            set(data["neighbours"].split(";"))) \
+            if data["neighbours"] != "" \
+            else (
+            set()
+        )
+
     def export(self) -> dict[str, Any]:
         """Export AS data in a standardized format."""
         return {
