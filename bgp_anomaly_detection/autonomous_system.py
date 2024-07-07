@@ -52,11 +52,52 @@ class AS:
             return self
         return NotImplemented
 
-    def import_data(self, data: dict) -> None:
-        self.times_seen = data["times_seen"]
-        self.n_mid_path = data["path"]["n_mid_path"]
-        self.n_end_path = data["path"]["n_end_path"]
-        self.path_sizes = Counter(data["path"]["path_sizes"])
+    def __eq__(self, other: Self) -> bool:
+        if isinstance(other, AS):
+            return self._id == other._id
+        return False
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def times_seen(self):
+        return self.mid_path_count + self.end_path_count
+
+    @property
+    def mean_path_size(self) -> float:
+        """Calculate the mean path size for the AS."""
+        total_paths = sum(self.path_sizes.values())
+        if total_paths == 0:
+            return 0.0
+        weighted_sum = sum(size * count for size, count in self.path_sizes.items())
+        return weighted_sum / total_paths
+
+    @property
+    def ipv4_count(self) -> int:
+        return 0
+
+    @property
+    def ipv6_count(self) -> int:
+        return 0
+
+    @property
+    def total_prefixes(self) -> int:
+        return len(self.announced_prefixes)
+
+    @property
+    def total_neighbours(self) -> int:
+        return len(self.neighbours)
+
+    def import_json(self, data: dict[str, Any]) -> None:
+        """Organize and import AS data from a JSON section."""
+        self.mid_path_count = int(data["path"]["mid_path_count"])
+        self.end_path_count = int(data["path"]["end_path_count"])
+        self.path_sizes = Counter({int(k): v for k, v in data["path"]["path_sizes"].items()})
         self.announced_prefixes = set(data["prefix"]["announced_prefixes"])
         self.neighbours = set(data["neighbour"]["neighbours"])
 
