@@ -1,3 +1,5 @@
+from csv import DictWriter
+from json import dumps
 from pathlib import Path
 from pickle import dump
 from typing import Union, Iterable
@@ -134,8 +136,8 @@ class Machine:
             for as_id, as_instance in self.known_as.items():
                 file.write(f"AS {as_id}:\n")
                 file.write(f"  Times Seen: {as_instance.times_seen}\n")
-                file.write(f"  Mid Path Count: {as_instance.n_mid_path}\n")
-                file.write(f"  End Path Count: {as_instance.n_end_path}\n")
+                file.write(f"  Mid Path Count: {as_instance.mid_path_count}\n")
+                file.write(f"  End Path Count: {as_instance.end_path_count}\n")
                 file.write(f"  Path Sizes: {as_instance.path_sizes}\n")
                 file.write(f"  Announced Prefixes: {', '.join(as_instance.announced_prefixes)}\n")
                 file.write(f"  Neighbours: {', '.join(as_instance.neighbours)}\n")
@@ -143,11 +145,10 @@ class Machine:
 
         logger.info(f"Finished exporting")
 
-    def save(self) -> None:
-        save_path = Paths.MODEL_DIR / "machine.pkl"
-        with open(save_path, 'wb') as file:
+    def save(self, output_file: str | Path) -> None:
+        with open(output_file, 'wb') as file:
             dump(self, file)
-        logger.info(f"Machine instance saved successfully at: {save_path}")
+        logger.info(f"Machine instance saved successfully at: {output_file}")
 
     def plot_as_path_size(self, as_id: str | int) -> None:
         try:
@@ -157,7 +158,6 @@ class Machine:
 
         logger.info(f"Plotting path size distribution for {as_instance}")
 
-        save_path = analyse.path_size_chart(as_instance.id, as_instance.path_sizes)
         save_path = analyse.plot_as_path_size(as_instance.id, as_instance.path_sizes)
 
         logger.info(f"Chart saved at {save_path}")
