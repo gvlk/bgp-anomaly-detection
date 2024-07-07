@@ -22,9 +22,24 @@ class AS:
         self.path_sizes: Counter[int] = Counter()
         self.announced_prefixes: set[str] = set()
         self.neighbours: set[str] = set()
+        # self.locale
+
+    def __str__(self) -> str:
+        return (
+            f"{self.id}: "
+            f"Mean Path Size {round(self.mean_path_size)}, "
+            f"{self.total_prefixes} Prefixes, "
+            f"{self.total_neighbours} Neighbours"
+        )
 
     def __repr__(self) -> str:
-        return f"AS {self.id}"
+        return (
+            f"AS(id={self.id!r}, "
+            f"mid_path_count={self.mid_path_count}, end_path_count={self.end_path_count}, "
+            f"path_sizes={dict(self.path_sizes)}, "
+            f"announced_prefixes={tuple(self.announced_prefixes)}, "
+            f"neighbours={tuple(self.neighbours)})"
+        )
 
     def __iadd__(self, as_instance: Self) -> Self:
         if isinstance(as_instance, AS):
