@@ -1,8 +1,11 @@
+from collections import OrderedDict
 from copy import copy
+from csv import DictWriter, DictReader, field_size_limit
 from datetime import datetime, timedelta
-from json import dump as json_dump, load as json_load
+from json import dump as json_dump, load as json_load, dumps
 from pathlib import Path
 from pickle import dump as pickle_dump, load as pickle_load
+from sys import maxsize
 
 from mrtparse import Reader, MRT_T, TD_V2_ST, BGP_ATTR_T, AS_PATH_SEG_T
 
@@ -10,8 +13,17 @@ from .autonomous_system import AS
 from .logging import Logger
 from .paths import Paths
 
+MESSAGES_AVG = 1154829  # Average number of messages in a snapshot .bz2 file
+
 peer = None
 
+maxInt = maxsize
+while True:
+    try:
+        field_size_limit(maxInt)
+        break
+    except OverflowError:
+        maxInt = int(maxInt / 10)
 logger = Logger.get_logger(__name__)
 
 
@@ -73,6 +85,10 @@ class SnapShot:
             self._import_bz2()
         elif file_extension == ".json":
             self._import_json()
+        elif file_extension == ".csv":
+            self._import_csv()
+        else:
+            raise ValueError(f"Unsupported file format: '{file_extension}'")
 
     def __repr__(self) -> str:
         """Return the file name of the BGP data file."""
@@ -122,7 +138,7 @@ class SnapShot:
                 elapsed_time = datetime.now() - start_time
                 elapsed_seconds = elapsed_time.total_seconds()
                 messages_per_second = count / elapsed_seconds if elapsed_seconds > 0 else 0
-                messages_left = total_messages - count
+                messages_left = MESSAGES_AVG - count
                 estimated_seconds_left = messages_left / messages_per_second if messages_per_second > 0 else 0
 
                 estimated_time_left = timedelta(seconds=estimated_seconds_left)
@@ -148,9 +164,24 @@ class SnapShot:
 
         for as_id, as_data in input_data["as"]["as_info"].items():
             self.known_as[as_id] = AS(as_id)
-            self.known_as[as_id].import_data(as_data)
+            self.known_as[as_id].import_json(as_data)
 
         logger.info(f"JSON data imported successfully")
+
+    def _import_csv(self) -> None:
+        """Import AS data from a CSV file."""
+
+        logger.info(f"Importing data from CSV file: {self._file_path}")
+
+        with open(self._file_path, mode='r') as csv_file:
+            reader = DictReader(csv_file)
+            row: OrderedDict
+            for row in reader:
+                as_id = row["as_id"]
+                self.known_as[as_id] = AS(as_id)
+                self.known_as[as_id].import_csv(row)
+
+        logger.info("CSV data imported successfully")
 
     def _import_pickle(self) -> None:
         """Load SnapShot instance from a pickle file."""
@@ -377,7 +408,60 @@ class SnapShot:
         logger.info(f"Parsed data saved at: {json_file_path}")
 
     def export_csv(self, destination_dir: str | Path = "") -> None:
-        pass
+        """
+        Export parsed AS data to a CSV file.
+
+        :param destination_dir: Directory path where the CSV file will be saved.
+        :return: None
+        """
+
+        if not destination_dir:
+            destination_dir = Paths.PARSED_DIR
+        else:
+            destination_dir = Path(destination_dir)
+            destination_dir.mkdir(exist_ok=True)
+
+        logger.info(f"Exporting data to CSV")
+
+        csv_data = list()
+        for as_id, as_instance in self.known_as.items():
+            if as_instance.path_sizes.total() > 0:
+                path_sizes = dumps(as_instance.path_sizes)
+            else:
+                path_sizes = None
+            if as_instance.announced_prefixes:
+                announced_prefixes = ";".join(as_instance.announced_prefixes)
+            else:
+                announced_prefixes = None
+            if as_instance.neighbours:
+                neighbours = ";".join(as_instance.neighbours)
+            else:
+                neighbours = None
+
+            csv_data.append({
+                "as_id": as_id,
+                "mid_path_count": as_instance.mid_path_count,
+                "end_path_count": as_instance.end_path_count,
+                "path_sizes": path_sizes,
+                "announced_prefixes": announced_prefixes,
+                "neighbours": neighbours
+            })
+
+        csv_file_path = destination_dir / (self._file_path.stem + ".csv")
+        with open(csv_file_path, mode='w', newline='') as csv_file:
+            fieldnames = [
+                "as_id",
+                "mid_path_count",
+                "end_path_count",
+                "path_sizes",
+                "announced_prefixes",
+                "neighbours"
+            ]
+            writer = DictWriter(csv_file, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(csv_data)
+
+        logger.info(f"Parsed data saved at: {csv_file_path}")
 
     def export_pickle(self, destination_dir: str | Path = ""):
         """Save the SnapShot instance to a pickle file."""
