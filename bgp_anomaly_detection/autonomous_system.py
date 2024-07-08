@@ -29,8 +29,8 @@ class AS:
     def __str__(self) -> str:
         return (
             f"{self.id}: "
-            f"From {self.location}, "
-            f"Mean Path Size {round(self.mean_path_size)}, "
+            f"{self.location}, "
+            f"Mean Path Size of {round(self.mean_path_size, 1)}, "
             f"{self.total_prefixes} Prefixes, "
             f"{self.total_neighbours} Neighbours"
         )

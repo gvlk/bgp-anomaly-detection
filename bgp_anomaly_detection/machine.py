@@ -60,7 +60,7 @@ class Machine:
         logger.info(f"Finished prediction")
 
         if save:
-            predict_path = Paths.PRED_DIR / str(snapshot)
+            predict_path = (Paths.PRED_DIR / str(snapshot)).with_suffix(".txt")
             with open(predict_path, "w") as file:
                 for as_id, as_instance in snapshot.known_as.items():
                     file.write(f"{str(as_instance)}\n")
@@ -72,7 +72,7 @@ class Machine:
                             times_seen_diff_str = "+" + str(round(times_seen_diff, 2))
                         else:
                             times_seen_diff_str = str(round(times_seen_diff, 2))
-                        file.write(f"  Times Seen: {times_seen_diff_str} from average: {times_seen_mean_str}\n")
+                        file.write(f"  Times Seen: {times_seen_diff_str}% from average: {times_seen_mean_str}\n")
                     else:
                         file.write(f"  No data\n")
                     file.write("\n")
@@ -167,14 +167,14 @@ class Machine:
     def plot_multiple_as_path_size(self, *as_ids: str | int) -> None:
         as_data = dict()
         for as_id in as_ids:
-            try:
+            if str(as_id) in self.known_as:
                 as_instance = self.known_as[str(as_id)]
-            except KeyError:
-                raise KeyError(f"Couldn't find any record of AS '{as_id}'")
+                as_data[as_instance.id] = as_instance.path_sizes
+            else:
+                logger.info(f"Couldn't find any record of AS '{as_id}'")
 
-            as_data[as_instance.id] = as_instance.path_sizes
+        logger.info(f"Plotting path size distribution for {tuple(str(self.known_as[_as]) for _as in as_data)}")
 
-        logger.info(f"Plotting path size distribution for {tuple(self.known_as[_as] for _as in as_data)}")
         save_path = analyse.plot_multiple_as_path_sizes(as_data)
 
         logger.info(f"Chart saved at {save_path}")

@@ -34,6 +34,36 @@ def plot_as_path_size(as_id: str, counter: Counter[int]) -> Path:
 
     return save_path
 
+
+def plot_multiple_as_path_sizes(as_data: dict[str, Counter[int]]) -> Path:
+    all_path_sizes = sorted(set(size for counter in as_data.values() for size in counter.keys()))
+
+    bar_width = 0.2
+    indices = list(range(len(all_path_sizes)))
+
+    plt.figure(figsize=(14, 8))
+
+    for i, (as_id, counter) in enumerate(as_data.items()):
+        counts = [counter.get(size, 0) for size in all_path_sizes]
+        plt.bar([x + i * bar_width for x in indices], counts, bar_width, label=f'AS {as_id}')
+
+    plt.xticks([x + bar_width * (len(as_data) - 1) / 2 for x in indices], all_path_sizes)
+
+    plt.xlabel("Path Sizes")
+    plt.ylabel("Count")
+    plt.yscale('log')
+    plt.title("Distribution of Path Sizes for Multiple ASs")
+    plt.legend()
+    plt.grid(True)
+
+    save_path = Paths.CHART_DIR / "combined_path_size_dist.png"
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.show()
+
+    return save_path
+
+
 def cdf(data) -> str:
     plt.hist(data, normed=True, cumulative=True, label='CDF',
              histtype='step', alpha=0.8, color='k')
