@@ -42,7 +42,8 @@ class SnapShot:
         "_file_path", "_type", "_ts", "_flag",
         "_peer_ip", "_peer_as", "_nlri", "_withdrawn",
         "_as_path", "_next_hop", "_as4_path",
-        "_export_to_file", "known_as", "snapshot_time"
+        "_export_to_file", "snapshot_time", "known_as",
+        "as_location"
     ]
 
     def __init__(self, file_path: str | Path) -> None:
@@ -68,6 +69,8 @@ class SnapShot:
 
         self.snapshot_time = datetime.strptime(date_time_str, '%Y%m%d%H%M')
         self.known_as: dict[str, AS] = dict()
+        with open(Paths.DELEG_DIR / "locale.pkl", "rb") as file:
+            self.as_location: dict[str, str] = pickle_load(file)
 
         self._type = str()
         self._flag = str()
@@ -162,7 +165,7 @@ class SnapShot:
         logger.info(f"Importing data from JSON file: {self._file_path}")
 
         for as_id, as_data in input_data["as"]["as_info"].items():
-            self.known_as[as_id] = AS(as_id)
+            self.known_as[as_id] = AS(as_id, self.get_location(as_id))
             self.known_as[as_id].import_json(as_data)
 
         logger.info(f"JSON data imported successfully")
@@ -177,7 +180,7 @@ class SnapShot:
             row: OrderedDict
             for row in reader:
                 as_id = row["as_id"]
-                self.known_as[as_id] = AS(as_id)
+                self.known_as[as_id] = AS(as_id, row["location"])
                 self.known_as[as_id].import_csv(row)
 
         logger.info("CSV data imported successfully")
@@ -209,7 +212,7 @@ class SnapShot:
                 valid_path.append(as_id)
             else:
                 try:
-                    self.known_as[as_id] = AS(as_id)
+                    self.known_as[as_id] = AS(as_id, self.get_location(as_id))
                 except ValueError:  # Caso o AS esteja entre {}, ele é ignorado
                     valid_path.append(None)
                     continue
@@ -438,6 +441,7 @@ class SnapShot:
 
             csv_data.append({
                 "as_id": as_id,
+                "location": as_instance.location,
                 "mid_path_count": as_instance.mid_path_count,
                 "end_path_count": as_instance.end_path_count,
                 "path_sizes": path_sizes,
@@ -446,9 +450,10 @@ class SnapShot:
             })
 
         csv_file_path = destination_dir / (self._file_path.stem + ".csv")
-        with open(csv_file_path, mode='w', newline='') as csv_file:
+        with open(csv_file_path, mode="w", newline="") as csv_file:
             fieldnames = [
                 "as_id",
+                "location",
                 "mid_path_count",
                 "end_path_count",
                 "path_sizes",
@@ -503,3 +508,13 @@ class SnapShot:
         self._export_to_file = False
         self.known_as.clear()
         self.snapshot_time = None
+
+    def get_location(self, as_id: str) -> str:
+        try:
+            location = self.as_location[as_id]
+            if location:
+                return location
+            else:
+                return "ZZ"
+        except KeyError:
+            return "ZZ"

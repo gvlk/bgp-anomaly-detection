@@ -2,16 +2,24 @@ from collections import Counter
 from csv import DictWriter
 from json import dumps
 from pathlib import Path
-from random import randint, random, choice, shuffle
+from pickle import load
+from random import randint, random, choice, shuffle, choices
 from typing import Any
 
 from faker import Faker
+
+from bgp_anomaly_detection import Paths
 
 fake = Faker()
 
 
 def generate_files(n_files: int, n_rows: int):
-    as_ids = list(str(randint(1000, 60000)) for _ in range(n_rows + 5))
+    as_ids: list[str] = list(str(randint(1000, 60000)) for _ in range(n_rows + 5))
+    with open(Path("..", "..", Paths.DELEG_DIR / "locale.pkl"), "rb") as file:
+        location_dict: dict[str, str] = load(file)
+    as_locations: list[str] = choices(tuple(location_dict.values()), k=n_rows)
+    as_locations = ["ZZ" if location == "" else location for location in as_locations]
+
     as_data: dict[str, dict[str, Any]] = dict()
 
     for i in range(n_files):
@@ -24,6 +32,7 @@ def generate_files(n_files: int, n_rows: int):
         for j in range(n_rows):
 
             as_id = choice(available_ids)
+            as_location = choice(as_locations)
             available_ids.remove(as_id)
             times_seen = randint(2, 45)
             mid_path_count = randint(0, times_seen)
@@ -55,6 +64,7 @@ def generate_files(n_files: int, n_rows: int):
             rows.append(
                 {
                     "as_id": as_id,
+                    "location": as_location if as_id not in as_data else as_data[as_id]["location"],
                     "mid_path_count": mid_path_count,
                     "end_path_count": end_path_count,
                     "path_sizes": dumps(path_sizes) if path_sizes.total() > 0 else None,
@@ -71,21 +81,33 @@ def generate_files(n_files: int, n_rows: int):
                 as_data[as_id]["path_sizes"].update(path_sizes)
                 as_data[as_id]["announced_prefixes"].update(announced_prefixes_set)
                 as_data[as_id]["neighbours"].update(neighbours_set)
+                as_data[as_id]["ipv4_count"] += ipv4_count
+                as_data[as_id]["ipv6_count"] += ipv6_count
             else:
                 as_data[as_id] = {
+                    "location": as_location,
                     "mid_path_count": mid_path_count,
                     "end_path_count": end_path_count,
                     "path_sizes": path_sizes,
                     "announced_prefixes": announced_prefixes_set,
-                    "neighbours": neighbours_set
+                    "neighbours": neighbours_set,
+                    "ipv4_count": ipv4_count,
+                    "ipv6_count": ipv6_count
                 }
 
         random_date = fake.past_datetime().strftime("%Y%m%d.%H%M")
         file_path = Path("test_data", "rib." + random_date + ".csv")
         with open(file_path, mode="w", newline="") as file:
             fieldnames = [
-                "as_id", "mid_path_count", "end_path_count", "path_sizes",
-                "announced_prefixes", "neighbours", "ipv4_count", "ipv6_count"
+                "as_id",
+                "location",
+                "mid_path_count",
+                "end_path_count",
+                "path_sizes",
+                "announced_prefixes",
+                "neighbours",
+                "ipv4_count",
+                "ipv6_count"
             ]
             writer = DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
@@ -96,22 +118,40 @@ def generate_files(n_files: int, n_rows: int):
 
     file_path = Path("test_data", f"sample_data_sum.csv")
     with open(file_path, mode="w", newline="") as file:
-        fieldnames = ["as_id", "mid_path_count", "end_path_count", "path_sizes", "announced_prefixes", "neighbours"]
+        fieldnames = [
+            "as_id",
+            "location",
+            "mid_path_count",
+            "end_path_count",
+            "path_sizes",
+            "announced_prefixes",
+            "neighbours",
+            "ipv4_count",
+            "ipv6_count"
+        ]
         writer = DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         for as_id in as_data:
-            path_sizes = dumps(as_data[as_id]["path_sizes"]) if as_data[as_id]["path_sizes"].total() > 0 else None
-            announced_prefixes = ";".join(as_data[as_id]["announced_prefixes"]) if as_data[as_id][
-                "announced_prefixes"] else None
-            neighbours = ";".join(as_data[as_id]["neighbours"]) if as_data[as_id]["neighbours"] else None
+            path_sizes = (
+                dumps(as_data[as_id]["path_sizes"]) if as_data[as_id]["path_sizes"].total() > 0 else None
+            )
+            announced_prefixes = (
+                ";".join(as_data[as_id]["announced_prefixes"]) if as_data[as_id]["announced_prefixes"] else None
+            )
+            neighbours = (
+                ";".join(as_data[as_id]["neighbours"]) if as_data[as_id]["neighbours"] else None
+            )
             writer.writerow(
                 {
                     "as_id": as_id,
+                    "location": as_data[as_id]["location"],
                     "mid_path_count": as_data[as_id]["mid_path_count"],
                     "end_path_count": as_data[as_id]["end_path_count"],
                     "path_sizes": path_sizes,
                     "announced_prefixes": announced_prefixes,
                     "neighbours": neighbours,
+                    "ipv4_count": as_data[as_id]["ipv4_count"],
+                    "ipv6_count": as_data[as_id]["ipv6_count"]
                 }
             )
 

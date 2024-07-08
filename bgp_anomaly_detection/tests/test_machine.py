@@ -15,7 +15,7 @@ class TestMachine(TestCase):
     def sort_csv_by_id(csv_file: str | Path):
         with open(csv_file, "r", newline="") as f:
             reader = DictReader(f)
-            sorted_rows = sorted(reader, key=lambda row: int(row['as_id']))
+            sorted_rows = sorted(reader, key=lambda row: int(row["as_id"]))
 
         with open(csv_file, "w", newline="") as f:
             writer = DictWriter(f, fieldnames=reader.fieldnames)
@@ -60,8 +60,11 @@ class TestMachine(TestCase):
                 reader_output = DictReader(output)
                 reader_expected = DictReader(expected)
 
-                self.assertEqual(reader_output.line_num, reader_expected.line_num,
-                                 "Files have different number of lines")
+                self.assertEqual(
+                    reader_output.line_num,
+                    reader_expected.line_num,
+                    "Files have different number of lines"
+                )
 
                 for output_line, expected_line in zip(reader_output, reader_expected):
                     output_path_sizes = (
@@ -106,6 +109,11 @@ class TestMachine(TestCase):
                         f"Mismatch found:\n{output_line}\n{expected_line}"
                     )
                     self.assertEqual(
+                        output_line["location"],
+                        expected_line["location"],
+                        f"Mismatch found:\n{output_line}\n{expected_line}"
+                    )
+                    self.assertEqual(
                         output_line["mid_path_count"],
                         expected_line["mid_path_count"],
                         f"Mismatch found:\n{output_line}\n{expected_line}"
@@ -139,7 +147,7 @@ class TestMachine(TestCase):
 
             self.assertTrue(save_path.exists(), "Save file was not created")
 
-            with open(save_path, 'rb') as file:
+            with open(save_path, "rb") as file:
                 loaded_machine = load(file)
 
             self.assertEqual(self.machine.known_as.keys(), loaded_machine.known_as.keys(), "Loaded known_as differs")

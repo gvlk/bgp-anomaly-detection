@@ -18,7 +18,7 @@ setup(
     packages=find_packages(),
     python_requires=">=3.10",
     install_requires=["mrtparse", "matplotlib", "pandas"],
-    extras_require=["faker"],
+    extras_require=["faker", "pycountry"],
     entry_points={
         "console_scripts": [
             "sample=sample:main"

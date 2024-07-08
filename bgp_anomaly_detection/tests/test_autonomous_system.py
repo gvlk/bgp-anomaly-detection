@@ -6,9 +6,9 @@ from bgp_anomaly_detection.autonomous_system import AS
 
 class TestAS(TestCase):
     def setUp(self):
-        self.as_1 = AS("123")
-        self.as_2 = AS("456")
-        self.as_3 = AS("123")
+        self.as_1 = AS("123", location="US")
+        self.as_2 = AS("456", location="UK")
+        self.as_3 = AS("123", location="AU")
 
         self.as_1.mid_path_count = 2
         self.as_1.end_path_count = 3
@@ -59,6 +59,10 @@ class TestAttr(TestAS):
     def test_invalid_as_id_non_ascii(self):
         with self.assertRaises(ValueError):
             AS("AS_éüß")
+
+    def test_location_initialization(self):
+        self.assertEqual(self.as_1.location, "US")
+        self.assertEqual(self.as_2.location, "UK")
 
     def test_mid_path_count(self):
         self.assertEqual(self.as_1.mid_path_count, 2)
@@ -269,6 +273,10 @@ class TestType(TestAS):
     def test_id_type(self):
         self.assertIsInstance(self.as_1.id, str)
         self.assertIsInstance(self.as_2.id, str)
+
+    def test_location_type(self):
+        self.assertIsInstance(self.as_1.location, str)
+        self.assertIsInstance(self.as_2.location, str)
 
     def test_mid_path_count_type(self):
         self.assertIsInstance(self.as_1.mid_path_count, int)

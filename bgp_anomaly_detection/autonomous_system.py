@@ -6,28 +6,30 @@ from typing import Self, Any
 
 class AS:
     __slots__ = [
-        "_id", "mid_path_count", "end_path_count",
-        "path_sizes", "announced_prefixes", "neighbours"
+        "_id", "_location", "mid_path_count", "end_path_count", "path_sizes",
+        "announced_prefixes", "neighbours"
     ]
 
-    def __init__(self, as_id: str) -> None:
+    def __init__(self, as_id: str, location: str = "ZZ") -> None:
         try:
             id_ = int(as_id)
         except ValueError:
             raise ValueError(f"Invalid AS identifier: '{as_id}' is not a valid integer.")
         else:
-            self._id = str(id_)
+            self._id: str = str(id_)
+
+        self._location: str = location
 
         self.mid_path_count: int = int()
         self.end_path_count: int = int()
         self.path_sizes: Counter[int] = Counter()
         self.announced_prefixes: set[str] = set()
         self.neighbours: set[str] = set()
-        # self.locale
 
     def __str__(self) -> str:
         return (
             f"{self.id}: "
+            f"From {self.location}, "
             f"Mean Path Size {round(self.mean_path_size)}, "
             f"{self.total_prefixes} Prefixes, "
             f"{self.total_neighbours} Neighbours"
@@ -35,7 +37,7 @@ class AS:
 
     def __repr__(self) -> str:
         return (
-            f"AS(id={self.id!r}, "
+            f"AS(id={self.id!r}, location={self.location!r}"
             f"mid_path_count={self.mid_path_count}, end_path_count={self.end_path_count}, "
             f"path_sizes={dict(self.path_sizes)}, "
             f"announced_prefixes={tuple(self.announced_prefixes)}, "
@@ -65,6 +67,10 @@ class AS:
     @property
     def id(self) -> str:
         return self._id
+
+    @property
+    def location(self):
+        return self._location
 
     @property
     def times_seen(self):
@@ -135,6 +141,7 @@ class AS:
     def export(self) -> dict[str, Any]:
         """Export AS data in a standardized format."""
         return {
+            "location": self.location,
             "times_seen": self.times_seen,
             "path": {
                 "mid_path_count": self.mid_path_count,

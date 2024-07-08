@@ -104,6 +104,7 @@ class Machine:
 
             csv_data.append({
                 "as_id": as_id,
+                "location": as_instance.location,
                 "mid_path_count": as_instance.mid_path_count,
                 "end_path_count": as_instance.end_path_count,
                 "path_sizes": path_sizes,
@@ -111,9 +112,10 @@ class Machine:
                 "neighbours": neighbours
             })
 
-        with open(output_file, mode='w', newline='') as csv_file:
+        with open(output_file, mode="w", newline="") as csv_file:
             fieldnames = [
                 "as_id",
+                "location",
                 "mid_path_count",
                 "end_path_count",
                 "path_sizes",
@@ -161,6 +163,19 @@ class Machine:
         save_path = analyse.plot_as_path_size(as_instance.id, as_instance.path_sizes)
 
         logger.info(f"Chart saved at {save_path}")
+
+    def plot_multiple_as_path_size(self, *as_ids: str | int) -> None:
+        as_data = dict()
+        for as_id in as_ids:
+            try:
+                as_instance = self.known_as[str(as_id)]
+            except KeyError:
+                raise KeyError(f"Couldn't find any record of AS '{as_id}'")
+
+            as_data[as_instance.id] = as_instance.path_sizes
+
+        logger.info(f"Plotting path size distribution for {tuple(self.known_as[_as] for _as in as_data)}")
+        save_path = analyse.plot_multiple_as_path_sizes(as_data)
 
         logger.info(f"Chart saved at {save_path}")
 

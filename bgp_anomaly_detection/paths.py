@@ -2,8 +2,10 @@ from pathlib import Path
 
 
 class Paths:
-    CHART_DIR = Path("chart")
-    DATA_DIR = Path("data")
+    REL_ROOT = Path(__file__).resolve().parent.parent
+    CHART_DIR = REL_ROOT / "chart"
+    DATA_DIR = REL_ROOT / "data"
+    DELEG_DIR = DATA_DIR / "delegated"
     DUMP_DIR = DATA_DIR / "dumps"
     PARSED_DIR = DATA_DIR / "parsed"
     PARSED_DIR_D = PARSED_DIR / "one_day"
@@ -20,8 +22,8 @@ class Paths:
     RAW_DIR_M = RAW_DIR / "one_month"
     RAW_DIR_Y = RAW_DIR / "one_year"
     RAW_DIR_VAL = RAW_DIR / "val"
-    MODEL_DIR = Path("model")
-    PRED_DIR = Path("predict")
+    MODEL_DIR = REL_ROOT / "model"
+    PRED_DIR = REL_ROOT / "predict"
 
 
 def ensure_project_structure():

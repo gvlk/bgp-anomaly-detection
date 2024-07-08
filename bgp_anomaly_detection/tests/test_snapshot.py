@@ -15,7 +15,7 @@ class TestSnapShot(TestCase):
 
     @staticmethod
     def read_csv(file_path):
-        with open(file_path, mode='r', newline='') as file:
+        with open(file_path, mode="r", newline="") as file:
             reader = DictReader(file)
             return list(reader)
 
@@ -38,6 +38,7 @@ class TestSnapShot(TestCase):
             random_row = self.csv_data1[randint(0, len(self.csv_data1) - 1)]
 
             row_id = random_row["as_id"]
+            row_location = random_row["location"]
             row_mid_path_count = int(random_row["mid_path_count"])
             row_end_path_count = int(random_row["end_path_count"])
             row_ipv4_count = int(random_row["ipv4_count"])
@@ -59,6 +60,7 @@ class TestSnapShot(TestCase):
             random_as = self.snapshot1.known_as[row_id]
             self.assertIsInstance(random_as, AS)
 
+            self.assertEqual(random_as.location, row_location)
             self.assertEqual(random_as.mid_path_count, row_mid_path_count)
             self.assertEqual(random_as.end_path_count, row_end_path_count)
             self.assertEqual(random_as.ipv4_count, row_ipv4_count)
@@ -74,6 +76,7 @@ class TestSnapShot(TestCase):
             row_id = random_row["as_id"]
             random_as = self.snapshot1.known_as[row_id]
 
+            self.assertIsInstance(random_as.location, str)
             self.assertIsInstance(random_as.mid_path_count, int)
             self.assertIsInstance(random_as.end_path_count, int)
             self.assertIsInstance(random_as.path_sizes, Counter)
