@@ -3,6 +3,7 @@ from copy import copy
 from csv import DictWriter, DictReader, field_size_limit
 from datetime import datetime, timedelta
 from json import dump as json_dump, load as json_load, dumps
+from math import inf
 from pathlib import Path
 from pickle import dump as pickle_dump, load as pickle_load
 from sys import maxsize
@@ -46,7 +47,7 @@ class SnapShot:
         "as_location"
     ]
 
-    def __init__(self, file_path: str | Path) -> None:
+    def __init__(self, file_path: str | Path, **kwargs) -> None:
         """
         The raw BGP data file can be in one of three formats:
 
@@ -85,7 +86,7 @@ class SnapShot:
         self._export_to_file = False
 
         if file_extension == ".bz2":
-            self._import_bz2()
+            self._import_bz2(kwargs.get("msg_limit", inf))
         elif file_extension == ".json":
             self._import_json()
         elif file_extension == ".csv":
@@ -111,7 +112,7 @@ class SnapShot:
 
         return hash(self.snapshot_time)
 
-    def _import_bz2(self) -> None:
+    def _import_bz2(self, msg_limit: int | float) -> None:
         """Iterate over messages in the BGP data file, processing them and logging progress."""
 
         reader = Reader(str(self._file_path))
@@ -123,7 +124,6 @@ class SnapShot:
             logger.info(f"Dumping file: {self._file_path}")
 
         count = 0
-
         for m in reader:
             if m.err:
                 continue
@@ -136,6 +136,8 @@ class SnapShot:
                 print(f"This MRT Format {t} is not supported.")
 
             count += 1
+            if count >= msg_limit:
+                break
             if count % 100000 == 0:
                 elapsed_time = datetime.now() - start_time
                 elapsed_seconds = elapsed_time.total_seconds()
@@ -372,7 +374,7 @@ class SnapShot:
         else:
             return ' '.join(self._as_path)
 
-    def export_json(self, destination_dir: str | Path = "") -> None:
+    def export_json(self, destination_dir: str | Path = Paths.PARSED_DIR) -> None:
         """
         Export parsed AS data to a JSON file.
 
@@ -380,11 +382,7 @@ class SnapShot:
         :return: None
         """
 
-        if not destination_dir:
-            destination_dir = Paths.PARSED_DIR
-        else:
-            destination_dir = Path(destination_dir)
-            destination_dir.mkdir(exist_ok=True)
+        destination_dir = Path(destination_dir)
 
         logger.info(f"Exporting data to JSON")
 
@@ -408,7 +406,7 @@ class SnapShot:
 
         logger.info(f"Parsed data saved at: {json_file_path}")
 
-    def export_csv(self, destination_dir: str | Path = "") -> None:
+    def export_csv(self, destination_dir: str | Path = Paths.PARSED_DIR) -> None:
         """
         Export parsed AS data to a CSV file.
 
@@ -416,11 +414,7 @@ class SnapShot:
         :return: None
         """
 
-        if not destination_dir:
-            destination_dir = Paths.PARSED_DIR
-        else:
-            destination_dir = Path(destination_dir)
-            destination_dir.mkdir(exist_ok=True)
+        destination_dir = Path(destination_dir)
 
         logger.info(f"Exporting data to CSV")
 
@@ -439,15 +433,17 @@ class SnapShot:
             else:
                 neighbours = None
 
-            csv_data.append({
-                "as_id": as_id,
-                "location": as_instance.location,
-                "mid_path_count": as_instance.mid_path_count,
-                "end_path_count": as_instance.end_path_count,
-                "path_sizes": path_sizes,
-                "announced_prefixes": announced_prefixes,
-                "neighbours": neighbours
-            })
+            csv_data.append(
+                {
+                    "as_id": as_id,
+                    "location": as_instance.location,
+                    "mid_path_count": as_instance.mid_path_count,
+                    "end_path_count": as_instance.end_path_count,
+                    "path_sizes": path_sizes,
+                    "announced_prefixes": announced_prefixes,
+                    "neighbours": neighbours
+                }
+            )
 
         csv_file_path = destination_dir / (self._file_path.stem + ".csv")
         with open(csv_file_path, mode="w", newline="") as csv_file:
@@ -466,14 +462,10 @@ class SnapShot:
 
         logger.info(f"Parsed data saved at: {csv_file_path}")
 
-    def export_pickle(self, destination_dir: str | Path = ""):
+    def export_pickle(self, destination_dir: str | Path = Paths.PARSED_DIR):
         """Save the SnapShot instance to a pickle file."""
 
-        if not destination_dir:
-            destination_dir = Paths.PICKLE_DIR
-        else:
-            destination_dir = Path(destination_dir)
-            destination_dir.mkdir(exist_ok=True)
+        destination_dir = Path(destination_dir)
 
         logger.info(f"Exporting instance to pickle file")
 
@@ -483,12 +475,12 @@ class SnapShot:
 
         logger.info(f"SnapShot instance saved successfully at: {save_path}")
 
-    def dump_to_txt(self) -> None:
+    def dump_to_txt(self, msg_limit: int = inf) -> None:
         """Read an MRT format file, process each message, and dump parsed information into a text file."""
 
         logger.info(f"Starting dumping")
         self._export_to_file = True
-        self._import_bz2()
+        self._import_bz2(msg_limit)
         logger.info(f"Finished dumping. New file saved at '{Paths.DUMP_DIR}'")
 
     def reset(self) -> None:
