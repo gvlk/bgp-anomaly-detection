@@ -42,8 +42,6 @@ class TestMachine(TestCase):
 
         for as_id in snapshot.known_as:
             self.assertIn(as_id, prediction, f"AS ID {as_id} not in prediction results")
-            self.assertIn("mean", prediction[as_id], "Missing 'mean' in prediction result")
-            self.assertIn("difference", prediction[as_id], "Missing 'difference' in prediction result")
 
     def test_export_csv(self):
         with TemporaryDirectory() as tempdir:

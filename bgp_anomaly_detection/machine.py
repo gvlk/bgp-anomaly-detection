@@ -1,5 +1,5 @@
 from csv import DictWriter
-from json import dumps
+from json import dump as json_dump, dumps
 from pathlib import Path
 from pickle import dump
 from typing import Union, Iterable
@@ -14,11 +14,50 @@ logger = Logger.get_logger(__name__)
 
 
 class Machine:
-    Results = dict[str, dict[str, float]]
+    Results = dict[str, dict[str, dict]]
 
     def __init__(self) -> None:
         self.known_as: dict[str, AS] = dict()
         self.dataset: set[str] = set()
+
+    @staticmethod
+    def _save_predictions(snapshot: SnapShot, predict: dict):
+        predict_path = (Paths.PRED_DIR / str(snapshot)).with_suffix(".json")
+        predictions_json = dict()
+
+        for as_id in snapshot.known_as:
+            predictions_json[as_id] = dict()
+            if as_id not in predict:
+                predictions_json[as_id]["Data"] = "No data"
+                continue
+
+            sum_warning_level = 0
+            for metric in predict[as_id]:
+                real = predict[as_id][metric]["real"]
+                expected = predict[as_id][metric]["expected"]
+                warning = predict[as_id][metric]["warning"]
+                sum_warning_level += warning
+                predictions_json[as_id][metric.capitalize()] = {
+                    "Real": real,
+                    "Expected": expected,
+                    "Warning": warning
+                }
+            predictions_json[as_id]["Summed Warning Level"] = sum_warning_level
+
+        with open(predict_path, "w") as file:
+            json_dump(predictions_json, file, indent=4)
+
+        logger.info(f"Prediction saved at: {predict_path}")
+
+    @staticmethod
+    def _get_warning_level(real_value: int | float, expected_value: int | float) -> int:
+        difference = abs((real_value - expected_value) / max(expected_value, 1))
+        if 0.0 <= difference <= 1.50:
+            return 0
+        elif difference <= 3.0:
+            return 1
+        else:
+            return 2
 
     def train(self, snapshots: Union[SnapShot, Iterable[SnapShot]]) -> None:
 
@@ -39,45 +78,52 @@ class Machine:
         logger.info(f"Finished training")
 
     def predict(self, snapshot: SnapShot, save: bool = True) -> Results:
-
-        logger.info(f"Starting prediction for snapshot: {snapshot}")
-
         predict = {
             key: {
-                "mean": float(),
-                "difference": float()
+                "location": {"real": str(), "expected": str(), "warning": int()},
+                "mid_path_count": {"real": int(), "expected": float(), "warning": int()},
+                "end_path_count": {"real": int(), "expected": float(), "warning": int()},
+                "path_size": {"real": float(), "expected": float(), "warning": int()},
+                "announced_prefixes": {"real": int(), "expected": float(), "warning": int()},
+                "neighbours": {"real": int(), "expected": float(), "warning": int()},
             }
             for key in self.known_as
         }
         snapshot_count = len(self.dataset)
+
+        def update_predictions(as_id_, attr, real_value, expected_value):
+            predict[as_id_][attr]["real"] = real_value
+            predict[as_id_][attr]["expected"] = expected_value
+            predict[as_id_][attr]["warning"] = self._get_warning_level(real_value, expected_value)
+
+        logger.info(f"Starting prediction for snapshot: {snapshot}")
+
         for as_id, as_instance in snapshot.known_as.items():
-            if as_id in self.known_as:
-                times_seen_mean = self.known_as[as_id].times_seen / snapshot_count
-                times_seen_diff = (as_instance.times_seen - times_seen_mean) / times_seen_mean
-                predict[as_id]["mean"] = times_seen_mean
-                predict[as_id]["difference"] = times_seen_diff
+            known_as_instance = self.known_as.get(as_id)
+            if known_as_instance is None:
+                continue
+
+            real_location = as_instance.location
+            expected_location = known_as_instance.location
+            predict[as_id]["location"]["real"] = real_location
+            predict[as_id]["location"]["expected"] = expected_location
+            predict[as_id]["location"]["warning"] = 0 if real_location == expected_location else 2
+
+            update_predictions(as_id, "mid_path_count", as_instance.mid_path_count,
+                               known_as_instance.mid_path_count / snapshot_count)
+            update_predictions(as_id, "end_path_count", as_instance.end_path_count,
+                               known_as_instance.end_path_count / snapshot_count)
+            update_predictions(as_id, "path_size", as_instance.mean_path_size,
+                               known_as_instance.mean_path_size / snapshot_count)
+            update_predictions(as_id, "announced_prefixes", as_instance.total_prefixes,
+                               known_as_instance.total_prefixes / snapshot_count)
+            update_predictions(as_id, "neighbours", as_instance.total_neighbours,
+                               known_as_instance.total_neighbours / snapshot_count)
 
         logger.info(f"Finished prediction")
 
         if save:
-            predict_path = (Paths.PRED_DIR / str(snapshot)).with_suffix(".txt")
-            with open(predict_path, "w") as file:
-                for as_id, as_instance in snapshot.known_as.items():
-                    file.write(f"{str(as_instance)}\n")
-                    if as_id in predict:
-                        times_seen_mean = predict[as_id]["mean"]
-                        times_seen_diff = predict[as_id]["difference"]
-                        times_seen_mean_str = str(round(times_seen_mean, 2))
-                        if times_seen_diff >= 0:
-                            times_seen_diff_str = "+" + str(round(times_seen_diff, 2))
-                        else:
-                            times_seen_diff_str = str(round(times_seen_diff, 2))
-                        file.write(f"  Times Seen: {times_seen_diff_str}% from average: {times_seen_mean_str}\n")
-                    else:
-                        file.write(f"  No data\n")
-                    file.write("\n")
-
-            logger.info(f"Prediction saved at: {predict_path}")
+            self._save_predictions(snapshot, predict)
 
         return predict
 
