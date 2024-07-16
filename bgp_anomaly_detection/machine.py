@@ -1,8 +1,14 @@
+from collections import Counter
+from copy import deepcopy
 from csv import DictWriter
+from inspect import getmembers
 from json import dump as json_dump, dumps
 from pathlib import Path
 from pickle import dump
-from typing import Union, Iterable
+from typing import Iterable
+
+import numpy as np
+from scipy.stats import skew
 
 from . import analyse
 from .autonomous_system import AS
@@ -17,8 +23,16 @@ class Machine:
     Results = dict[str, dict[str, dict]]
 
     def __init__(self) -> None:
-        self.known_as: dict[str, AS] = dict()
-        self.dataset: set[str] = set()
+        self.dataset: list[SnapShot] = list()
+        self.train_data: dict[
+            str, dict[
+                str, tuple[
+                    np.floating, np.floating, np.floating, np.floating, np.floating, np.floating | str
+                ]
+            ]
+        ] = dict()
+
+        self.train_data = dict()
 
     @staticmethod
     def _save_predictions(snapshot: SnapShot, predict: dict):
@@ -59,68 +73,102 @@ class Machine:
         else:
             return 2
 
-    def train(self, snapshots: Union[SnapShot, Iterable[SnapShot]]) -> None:
+    def train(self, snapshots: SnapShot | Iterable[SnapShot]) -> None:
+        """
+        Trains the model using the provided snapshots of AS instances. This method updates historical data and computes
+        statistical properties for each AS instance based on the provided snapshots.
 
+        :param snapshots: A single snapshot or iterable of snapshots containing AS instances to train the model.
+        :return: None
+        """
         if isinstance(snapshots, SnapShot):
             snapshots = (snapshots,)
+
+        # Initialize dictionaries and templates for storing AS history and statistical properties
+        as_history = dict()
+        as_special_property_names = ("announced_prefixes", "neighbours")
+        as_property_names = tuple(
+            prty for prty, _ in getmembers(AS, lambda x: isinstance(x, property))
+            if prty not in (("id",) + as_special_property_names)
+        )
+        as_history_template = {
+            prty: list() for prty in as_property_names
+        }
+        as_property_stats_template = {
+            prty: (
+                np.float64(), np.float64(), np.float64(),
+                np.float64(), np.float64(), np.float64()
+            ) for prty in as_property_names
+        }
 
         logger.info(f"Starting training with {len(snapshots)} snapshots")
 
         for snapshot in snapshots:
-            if snapshot not in self.dataset:
-                for as_id in snapshot.known_as:
-                    if as_id not in self.known_as:
-                        self.known_as[as_id] = snapshot.known_as[as_id]
+            if snapshot in self.dataset:
+                continue
+            self.dataset.append(snapshot)
+            # Update AS history for each AS in the snapshot
+            for as_id, as_instance in snapshot.known_as.items():
+                if as_id not in as_history:
+                    as_history[as_id] = {
+                        "history": deepcopy(as_history_template),
+                        "announced_prefixes": set(),
+                        "neighbours": set()
+                    }
+                # Update historical data for each AS property
+                for property_ in as_property_names:
+                    as_history[as_id]["history"][property_].append(getattr(as_instance, property_))
+                as_history[as_id]["announced_prefixes"].update(as_instance.announced_prefixes)
+                as_history[as_id]["neighbours"].update(as_instance.neighbours)
+        self.dataset.sort()
+
+        # Compute statistics for each AS based on its history
+        for as_id in as_history:
+            data = as_history[as_id]
+            self.train_data[as_id] = {
+                "stats": deepcopy(as_property_stats_template),
+                "announced_prefixes": as_history[as_id]["announced_prefixes"],
+                "neighbours": as_history[as_id]["neighbours"]
+            }
+            # Compute statistics for each property of the current AS
+            for prty in as_property_names:
+                prty_history = data["history"][prty]
+                if prty == "location":
+                    mode = Counter(prty_history).most_common(1)[0][0]
+                    self.train_data[as_id]["stats"][prty] = (
+                        np.float64(-1), np.float64(-1), np.float64(-1),
+                        np.float64(-1), np.float64(-1), mode
+                    )
+                    continue
+                elif prty == "path_sizes":
+                    counters = list()
+                    for counter in prty_history:
+                        counters.extend(counter.elements())
+                    if counters:
+                        prty_history = counters
                     else:
-                        self.known_as[as_id] += snapshot.known_as[as_id]
-                self.dataset.add(str(snapshot))
+                        self.train_data[as_id]["stats"][prty] = (
+                            np.float64(-1), np.float64(-1), np.float64(-1),
+                            np.float64(-1), np.float64(-1), np.float64(-1)
+                        )
+                        continue
+                # Compute range, mean, variance, skewness, and slope for the current property data
+                st_qt = np.percentile(prty_history, 25)
+                rd_qt = np.percentile(prty_history, 75)
+                dq = rd_qt - st_qt
+                min_ = np.max((np.min(prty_history), st_qt - (1.5 * dq)))
+                max_ = np.min((np.max(prty_history), rd_qt + (1.5 * dq)))
+                mean = np.mean(prty_history)
+                variance = np.var(prty_history)
+                if variance > 0:
+                    skewness = skew(np.array(prty_history))
+                    slope, _ = np.polyfit(np.arange(len(prty_history)), prty_history, 1)
+                else:
+                    skewness = np.float64(0)
+                    slope = np.float64(0)
+                self.train_data[as_id]["stats"][prty] = (min_, max_, mean, variance, skewness, slope)
 
         logger.info(f"Finished training")
-
-    def predict(self, snapshot: SnapShot, save: bool = True) -> Results:
-        predict = {
-            key: {
-                "location": {"real": str(), "expected": str(), "warning": int()},
-                "mid_path_count": {"real": int(), "expected": float(), "warning": int()},
-                "end_path_count": {"real": int(), "expected": float(), "warning": int()},
-                "path_size": {"real": float(), "expected": float(), "warning": int()},
-                "announced_prefixes": {"real": int(), "expected": float(), "warning": int()},
-                "neighbours": {"real": int(), "expected": float(), "warning": int()},
-            }
-            for key in self.known_as
-        }
-        snapshot_count = len(self.dataset)
-
-        def update_predictions(as_id_, attr, real_value, expected_value):
-            predict[as_id_][attr]["real"] = real_value
-            predict[as_id_][attr]["expected"] = expected_value
-            predict[as_id_][attr]["warning"] = self._get_warning_level(real_value, expected_value)
-
-        logger.info(f"Starting prediction for snapshot: {snapshot}")
-
-        for as_id, as_instance in snapshot.known_as.items():
-            known_as_instance = self.known_as.get(as_id)
-            if known_as_instance is None:
-                continue
-
-            real_location = as_instance.location
-            expected_location = known_as_instance.location
-            predict[as_id]["location"]["real"] = real_location
-            predict[as_id]["location"]["expected"] = expected_location
-            predict[as_id]["location"]["warning"] = 0 if real_location == expected_location else 2
-
-            update_predictions(as_id, "mid_path_count", as_instance.mid_path_count,
-                               known_as_instance.mid_path_count / snapshot_count)
-            update_predictions(as_id, "end_path_count", as_instance.end_path_count,
-                               known_as_instance.end_path_count / snapshot_count)
-            update_predictions(as_id, "path_size", as_instance.mean_path_size,
-                               known_as_instance.mean_path_size / snapshot_count)
-            update_predictions(as_id, "announced_prefixes", as_instance.total_prefixes,
-                               known_as_instance.total_prefixes / snapshot_count)
-            update_predictions(as_id, "neighbours", as_instance.total_neighbours,
-                               known_as_instance.total_neighbours / snapshot_count)
-
-        logger.info(f"Finished prediction")
 
         if save:
             self._save_predictions(snapshot, predict)

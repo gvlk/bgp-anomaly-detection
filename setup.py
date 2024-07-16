@@ -17,7 +17,7 @@ setup(
     package_dir={"": "bgp_anomaly_detection"},
     packages=find_packages(),
     python_requires=">=3.10",
-    install_requires=["mrtparse", "matplotlib", "pandas"],
+    install_requires=["mrtparse", "matplotlib", "pandas", "numpy", "scipy"],
     extras_require=["faker", "pycountry"],
     entry_points={
         "console_scripts": [

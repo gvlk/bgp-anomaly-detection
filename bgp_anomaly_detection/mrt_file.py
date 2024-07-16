@@ -43,7 +43,7 @@ class SnapShot:
         "_file_path", "_type", "_ts", "_flag",
         "_peer_ip", "_peer_as", "_nlri", "_withdrawn",
         "_as_path", "_next_hop", "_as4_path",
-        "_export_to_file", "snapshot_time", "known_as",
+        "_export_to_file", "timestamp", "known_as",
         "as_location"
     ]
 
@@ -68,7 +68,7 @@ class SnapShot:
         time_part = base_name[2]
         date_time_str = date_part + time_part
 
-        self.snapshot_time = datetime.strptime(date_time_str, '%Y%m%d%H%M')
+        self.timestamp = datetime.strptime(date_time_str, '%Y%m%d%H%M')
         self.known_as: dict[str, AS] = dict()
         with open(Paths.DELEG_DIR / "locale.pkl", "rb") as file:
             self.as_location: dict[str, str] = pickle_load(file)
@@ -99,18 +99,43 @@ class SnapShot:
 
         return self._file_path.name
 
+    def __hash__(self) -> int:
+        """Return a hash value based on the snapshot time."""
+
+        return hash(self.timestamp)
+
     def __eq__(self, snapshot_instance) -> bool:
         """Compare two SnapShot instances for equality based on their snapshot times."""
 
         if isinstance(snapshot_instance, SnapShot):
-            return self.snapshot_time == snapshot_instance.snapshot_time
+            return self.timestamp == snapshot_instance.timestamp
         else:
             return NotImplemented
 
-    def __hash__(self) -> int:
-        """Return a hash value based on the snapshot time."""
+    def __lt__(self, other):
+        if not isinstance(other, SnapShot):
+            return NotImplemented
+        return self.timestamp < other.timestamp
 
-        return hash(self.snapshot_time)
+    def __le__(self, other):
+        if not isinstance(other, SnapShot):
+            return NotImplemented
+        return self.timestamp <= other.timestamp
+
+    def __ne__(self, other):
+        if not isinstance(other, SnapShot):
+            return NotImplemented
+        return self.timestamp != other.timestamp
+
+    def __gt__(self, other):
+        if not isinstance(other, SnapShot):
+            return NotImplemented
+        return self.timestamp > other.timestamp
+
+    def __ge__(self, other):
+        if not isinstance(other, SnapShot):
+            return NotImplemented
+        return self.timestamp >= other.timestamp
 
     def _import_bz2(self, msg_limit: int | float) -> None:
         """Iterate over messages in the BGP data file, processing them and logging progress."""
@@ -386,7 +411,7 @@ class SnapShot:
 
         logger.info(f"Exporting data to JSON")
 
-        formatted_date_time = self.snapshot_time.strftime('%d/%m/%Y %H:%M')
+        formatted_date_time = self.timestamp.strftime('%d/%m/%Y %H:%M')
 
         as_info = dict()
         for as_id in self.known_as:
@@ -499,7 +524,7 @@ class SnapShot:
         self._as4_path = list()
         self._export_to_file = False
         self.known_as.clear()
-        self.snapshot_time = None
+        self.timestamp = None
 
     def get_location(self, as_id: str) -> str:
         try:
