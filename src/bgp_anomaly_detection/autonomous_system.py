@@ -35,8 +35,8 @@ class AS:
             return self.id == other.id
         return False
 
-    def __hash__(self) -> int:
-        return hash(self.id)
+    # def __hash__(self) -> int:
+    #     return hash(self.id)
 
     @property
     def times_seen(self) -> int:
@@ -72,7 +72,7 @@ class AS:
     def total_neighbours(self) -> int:
         return len(self.neighbours)
 
-    def export_json(self) -> dict[str, str | int | float | tuple | dict]:
+    def export_json(self) -> dict[str, str | int | float | tuple]:
         return {
             "location": self.location,
             "times_seen": self.times_seen,
@@ -80,7 +80,7 @@ class AS:
                 "mid_path_count": self.mid_path_count,
                 "end_path_count": self.end_path_count,
                 "mean_path_size": self.mean_path_size,
-                "path_sizes": dict(self.path_sizes)
+                "path_sizes": tuple(self.path_sizes)
             },
             "prefix": {
                 "total_prefixes": self.total_prefixes,
