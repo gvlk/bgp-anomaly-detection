@@ -2,10 +2,10 @@ from pathlib import Path
 
 
 class Paths:
-    REL_ROOT = Path(__file__).resolve().parent.parent
+    REL_ROOT = Path(__file__).resolve().parent.parent.parent
+    DELEG_DIR = Path(__file__).resolve().parent / "data" / "delegated"
     CHART_DIR = REL_ROOT / "chart"
     DATA_DIR = REL_ROOT / "data"
-    DELEG_DIR = DATA_DIR / "delegated"
     DUMP_DIR = DATA_DIR / "dumps"
     PARSED_DIR = DATA_DIR / "parsed"
     PARSED_DIR_D = PARSED_DIR / "one_day"
