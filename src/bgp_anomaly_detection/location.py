@@ -1,6 +1,7 @@
 import pickle
 from pathlib import Path
 
+from frozendict import frozendict
 from pycountry import countries
 
 
@@ -30,7 +31,7 @@ def make_location_dictionary(directory: str | Path, output_file: str | Path) -> 
                     location_dict[as_id] = location_full
 
     with open(output_file, "wb") as output:
-        pickle.dump(location_dict, output)
+        pickle.dump(frozendict(location_dict), output)
 
 
 def main():
