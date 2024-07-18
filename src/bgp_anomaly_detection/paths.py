@@ -3,7 +3,8 @@ from pathlib import Path
 
 class Paths:
     REL_ROOT = Path(__file__).resolve().parent.parent.parent
-    DELEG_DIR = Path(__file__).resolve().parent / "data" / "delegated"
+    DATA_SRC_DIR = Path(__file__).resolve().parent / "data"
+    DELEG_DIR = DATA_SRC_DIR / "delegated"
     CHART_DIR = REL_ROOT / "chart"
     DATA_DIR = REL_ROOT / "data"
     DUMP_DIR = DATA_DIR / "dumps"
