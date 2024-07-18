@@ -8,23 +8,9 @@ BGP Snapshot File Archive: https://archive.routeviews.org/route-views3/bgpdata/
 
 ## Installation
 
-To use this project, you need to install the required dependencies. Assuming you have Python installed, you can set up
-your environment as follows:
-
-### Using setuptools
-
-1. Clone the repository:
-
-    ```bash
-    git clone https://github.com/gvlk/bgp-anomaly-detection
-    cd bgp-anomaly-detection
-    ```
-
-2. Install the project:
-
-    ```bash
-    python setup.py install
-   ```
+```shell
+pip install git+https://github.com/gvlk/bgp-anomaly-detection.git
+```
 
 ## Usage
 

@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bgp-anomaly-detection"
+version = "0.0.1"
+dependencies = [
+    "setuptools", "mrtparse",
+    "matplotlib", "pandas",
+    "scipy"
+]
+authors = [
+    { name = "Guilherme Azambuja", email = "guilhermevazambuja@gmail.com" }
+]
+maintainers = [
+    { name = "Guilherme Azambuja", email = "guilhermevazambuja@gmail.com" }
+]
+description = "BGP Anomaly Detection with Machine Learning"
+readme = "README.md"
+requires-python = ">=3.10, <3.13"
+keywords = [
+    "BGP", "Anomaly Detection",
+    "BGP Anomaly", "BGP Machine Learning",
+    "Anomaly Machine Learning"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+test = ["Faker"]
+location = ["pycountry"]
+
+[project.urls]
+Repository = "https://github.com/gvlk/bgp-anomaly-detection"
+Issues = "https://github.com/gvlk/bgp-anomaly-detection/issues"
+
+[project.scripts]
+analyse = "bgp_anomaly_detection:analyse"
