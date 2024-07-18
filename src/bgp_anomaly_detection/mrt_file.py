@@ -151,10 +151,7 @@ class SnapShot:
         :return: None
         """
 
-        self.snapshot_time = datetime.strptime(date_time_str, '%Y%m%d%H%M')
-        self.known_as: dict[str, AS] = dict()
-        with open(Paths.DELEG_DIR / "locale.pkl", "rb") as file:
-            self.as_location: dict[str, str] = pickle_load(file)
+        destination_dir = Path(destination_dir)
 
         logger.info(f"Exporting data to JSON")
 
@@ -216,8 +213,12 @@ class MRTParser:
         self._next_hop = list()
         self._as4_path = list()
 
-        with open(Paths.DELEG_DIR / "locale.pkl", "rb") as file:
-            self.location_map: frozendict[str, str] = pickle_load(file)
+        self.location_map: frozendict[str, str]
+        if not (Paths.DELEG_DIR / "locale.pkl").exists():
+            self.location_map = make_location_dictionary()
+        else:
+            with open(Paths.DELEG_DIR / "locale.pkl", "rb") as file:
+                self.location_map = pickle_load(file)
 
     def import_bz2(self, file_path: str, msg_limit: int) -> frozendict:
         """
