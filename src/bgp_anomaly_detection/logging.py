@@ -8,6 +8,7 @@ class Logger:
         """
         Sets up the logging configuration.
         """
+
         basicConfig(
             level=level,
             datefmt='%H:%M',
@@ -23,4 +24,5 @@ class Logger:
         :param name: The name of the logger.
         :return: A logger instance.
         """
+
         return getLogger(name)
