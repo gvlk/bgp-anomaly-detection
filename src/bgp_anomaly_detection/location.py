@@ -2,6 +2,7 @@ import pickle
 from pathlib import Path
 
 from frozendict import frozendict
+from .paths import Paths
 from pycountry import countries
 
 
@@ -17,10 +18,10 @@ def get_country_name(abbreviation: str) -> str:
         return abbreviation
 
 
-def make_location_dictionary(directory: str | Path, output_file: str | Path) -> None:
+def make_location_dictionary() -> None:
     location_dict = dict()
 
-    for file_path in Path(directory).rglob("*.txt"):
+    for file_path in Paths.DELEG_DIR.rglob("*.txt"):
         with open(file_path, "r") as file:
             for line in file:
                 parts = line.strip().split('|')
@@ -30,15 +31,5 @@ def make_location_dictionary(directory: str | Path, output_file: str | Path) -> 
                     location_full = get_country_name(location_abbr)
                     location_dict[as_id] = location_full
 
-    with open(output_file, "wb") as output:
-        pickle.dump(frozendict(location_dict), output)
-
-
-def main():
-    directory = Path("..", "data", "delegated")
-    output_file = directory / "locale.pkl"
-    make_location_dictionary(directory, output_file)
-
-
-if __name__ == '__main__':
-    main()
+    with open(Paths.DELEG_DIR / "locale.pkl", "wb") as output:
+        pickle.dump(location_dict, output)
