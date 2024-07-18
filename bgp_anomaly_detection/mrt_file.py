@@ -11,6 +11,7 @@ from sys import maxsize
 from mrtparse import Reader, MRT_T, TD_V2_ST, BGP_ATTR_T, AS_PATH_SEG_T
 
 from .autonomous_system import AS
+from .location import make_location_dictionary
 from .logging import Logger
 from .paths import Paths
 
@@ -70,6 +71,8 @@ class SnapShot:
 
         self.snapshot_time = datetime.strptime(date_time_str, '%Y%m%d%H%M')
         self.known_as: dict[str, AS] = dict()
+        if not (Paths.DELEG_DIR / "locale.pkl").exists():
+            make_location_dictionary()
         with open(Paths.DELEG_DIR / "locale.pkl", "rb") as file:
             self.as_location: dict[str, str] = pickle_load(file)
 
