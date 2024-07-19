@@ -148,5 +148,5 @@ class TestMachine(TestCase):
             with open(save_path, "rb") as file:
                 loaded_machine = load(file)
 
-            self.assertEqual(self.machine.known_as.keys(), loaded_machine.known_as.keys(), "Loaded known_as differs")
+            self.assertEqual(self.machine.known_as.keys(), loaded_machine._as_map.keys(), "Loaded known_as differs")
             self.assertEqual(self.machine.dataset, loaded_machine.dataset, "Loaded dataset differs")
