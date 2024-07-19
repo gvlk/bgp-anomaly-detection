@@ -14,36 +14,17 @@ pip install git+https://github.com/gvlk/bgp-anomaly-detection.git
 
 ## Usage
 
-BGP Data SnapShot
-The SnapShot class is responsible for handling raw BGP data files, parsing them, and exporting the parsed data into
-various formats. The supported file formats include .bz2, .json, and .pkl.
+### SnapShot
+
+The SnapShot class represents a snapshot of BGP data, facilitating the import, processing, and export of AS routing
+information. It handles various file formats and provides methods for exporting data to CSV, JSON, and pickle formats.
 
 ```python
-import bgp_anomaly_detection as bgpad
-from bgp_anomaly_detection import Paths
+from bgp_anomaly_detection import SnapShot
 
-
-def main():
-    for file in Paths.RAW_DIR.rglob("*.bz2"):
-        snapshot = bgpad.SnapShot(file)
-        destination_dir = Paths.PICKLE_DIR / file.parent.name
-        snapshot.export_pickle(destination_dir)
-
-
-if __name__ == "__main__":
-    main()
+snapshot = SnapShot(file_path='path/to/bgp/data', msg_limit=10000)
+snapshot.export_csv("path/to/output/folder")
 ```
-
-### SnapShot Class
-
-The SnapShot class can handle BGP data in different formats:
-
-- .bz2: Raw BGP data file
-- .json: JSON file containing parsed AS data
-- .pkl: Pickle file containing a previously saved SnapShot instance
-
-The SnapShot class provides methods to import and export data, parse AS path data, and handle different BGP message
-types.
 
 ### Machine Learning for Anomaly Detection
 
@@ -52,48 +33,15 @@ machine can train on multiple snapshots, updating its internal state, and make p
 comparing observed AS path statistics against learned statistics.
 
 ```python
-from bgp_anomaly_detection import Machine, SnapShot
+from pathlib import Path
+from bgp_anomaly_detection import SnapShot, Machine
+
+mrt_folder = Path("path/to/mrt/folder")
+snapshots = [SnapShot(file) for file in mrt_folder.rglob("*.bz2")]
+
+val_snapshot = SnapShot("path/to/snapshot")
 
 machine = Machine()
-```
-
-### Train the machine with snapshots
-
-```python
-snapshots = [SnapShot(file) for file in Paths.PICKLE_DIR.rglob("*.pkl")]
 machine.train(snapshots)
+results = machine.predict(val_snapshot)
 ```
-
-### Predict anomalies in a new snapshot
-
-```python
-new_snapshot = SnapShot("path/to/new_snapshot.bz2")
-predictions = machine.predict(new_snapshot)
-```
-
-### Export the model data
-
-```python
-machine.export_txt("path/to/exported_data.txt")
-```
-
-### Save the machine state
-
-```python
-machine.save()
-```
-
-### Logging
-
-Logging is used extensively throughout the project to track the progress and status of data processing, training, and
-prediction tasks. This helps in debugging and understanding the workflow.
-
-## Project Structure
-
-- bgp_anomaly_detection/
-    - __init__.py: Initialization of the module
-    - autonomous_system.py: Contains the AS class representing an Autonomous System
-    - logging.py: Custom logging utilities
-    - paths.py: Paths configuration
-    - mrt_file.py: Contains the SnapShot class
-    - machine.py: Contains the Machine class
