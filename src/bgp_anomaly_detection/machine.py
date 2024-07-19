@@ -8,7 +8,7 @@ from pickle import dump
 from typing import Iterable
 
 import numpy as np
-from scipy.stats import skew
+from scipy.stats import skew, norm
 
 from .autonomous_system import AS
 from .logging import Logger
@@ -165,31 +165,77 @@ class Machine:
                 min_ = np.max((np.min(prty_history), st_qt - (1.5 * dq)))
                 max_ = np.min((np.max(prty_history), rd_qt + (1.5 * dq)))
                 mean = np.mean(prty_history)
-                std_var = np.std(prty_history)
-                if std_var > 0:
+                std_d = np.std(prty_history)
+                if std_d > 0:
                     skewness = skew(np.array(prty_history))
                     slope, _ = np.polyfit(np.arange(len(prty_history)), prty_history, 1)
                 else:
                     skewness = np.float64(0)
                     slope = np.float64(0)
-                self.train_data[as_id]["stats"][prty] = (min_, max_, mean, std_var, skewness, slope, str())
+                self.train_data[as_id]["stats"][prty] = (min_, max_, mean, std_d, skewness, slope, str())
 
         logger.info(f"Finished training")
 
-    # def predict(self, snapshot: SnapShot, save: bool = True) -> AS_PREDICT:
-    #     predictions = dict()
-    #
-    #     snapshot_count = len(self.dataset)
-    #
-    #     logger.info(f"Starting prediction for snapshot: {snapshot}")
-    #
-    #     logger.info(f"Finished prediction")
-    #
-    #     if save:
-    #         self._save_predictions(snapshot, predictions)
-    #
-    #     return predictions
-    #
+    def predict(self, snapshot: SnapShot, save: bool = False) -> AS_PREDICT:
+
+        predictions = dict()
+
+        as_special_property_names = ("id", "announced_prefixes", "neighbours", "path_sizes")
+        as_property_names = tuple(
+            prty for prty, _ in getmembers(AS, isdatadescriptor)
+            if prty not in as_special_property_names
+        )
+        as_prediction_template = {
+            "warning_level": int(),
+            "behaviour": int()
+        }
+
+        logger.info(f"Starting prediction for snapshot: {snapshot}")
+
+        for as_id, as_instance in snapshot.as_map.items():
+            if as_id not in self.train_data:
+                predictions[as_id] = None
+                continue
+            else:
+                predictions[as_id] = {prty: deepcopy(as_prediction_template) for prty in as_property_names}
+
+            stats = self.train_data[as_id]["stats"]
+
+            for prty in as_property_names:
+                prty_predict = predictions[as_id][prty]
+                value_to_validate = getattr(as_instance, prty)
+                min_, max_, mean, std_d, skewness, slope, location = stats[prty]
+
+                if prty == "location":
+                    if value_to_validate != location:
+                        prty_predict["warning_level"] += 2
+                    continue
+
+                if value_to_validate < min_ or value_to_validate > max_:
+                    prty_predict["warning_level"] += 1
+
+                if std_d > 0:
+                    z_score = (value_to_validate - mean) / std_d
+                    probability = norm.cdf(z_score)
+
+                    if probability < 0.05 or probability > 0.95:
+                        prty_predict["warning_level"] += 2
+
+                threshold = 0.1
+                if slope > threshold:
+                    prty_predict["behaviour"] = 1
+                elif slope < -threshold:
+                    prty_predict["behaviour"] = -1
+                else:
+                    prty_predict["behaviour"] = 0
+
+        logger.info(f"Finished prediction")
+
+        if save:
+            self._save_predictions(snapshot, predictions)
+
+        return predictions
+
     # def export_csv(self, output_file: str | Path) -> None:
     #
     #     output_file = output_file.with_suffix(".csv")
