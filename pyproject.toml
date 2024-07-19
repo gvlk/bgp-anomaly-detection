@@ -8,7 +8,7 @@ version = "0.0.1"
 dependencies = [
     "setuptools", "mrtparse",
     "matplotlib", "pandas",
-    "scipy"
+    "scipy", "pycountry"
 ]
 authors = [
     { name = "Guilherme Azambuja", email = "guilhermevazambuja@gmail.com" }
@@ -32,7 +32,6 @@ classifiers = [
 
 [project.optional-dependencies]
 test = ["Faker"]
-location = ["pycountry"]
 
 [project.urls]
 Repository = "https://github.com/gvlk/bgp-anomaly-detection"
