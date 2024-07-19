@@ -96,6 +96,7 @@ class SnapShot:
         """
 
         destination_dir = Path(destination_dir)
+        destination_dir.mkdir(exist_ok=True, parents=True)
 
         logger.info(f"Exporting data to CSV")
 
@@ -152,6 +153,7 @@ class SnapShot:
         """
 
         destination_dir = Path(destination_dir)
+        destination_dir.mkdir(exist_ok=True, parents=True)
 
         logger.info(f"Exporting data to JSON")
 
@@ -184,6 +186,7 @@ class SnapShot:
         """
 
         destination_dir = Path(destination_dir)
+        destination_dir.mkdir(exist_ok=True, parents=True)
 
         logger.info(f"Exporting snapshot to pickle file")
 
