@@ -74,16 +74,43 @@ class SnapShot:
 
         return Path(self.file_path).name
 
-    # def __hash__(self) -> int:
-    #     """Return a hash value based on the snapshot time."""
-    #
-    #     return hash(self.timestamp)
-
     def __eq__(self, other: Self) -> bool:
         """Compare two SnapShot instances for equality based on their snapshot times."""
 
         if isinstance(other, SnapShot):
             return self.timestamp == other.timestamp
+        else:
+            return NotImplemented
+
+    def __lt__(self, other: Self) -> bool:
+        """Compare if this SnapShot instance is less than another based on their snapshot times."""
+
+        if isinstance(other, SnapShot):
+            return self.timestamp < other.timestamp
+        else:
+            return NotImplemented
+
+    def __le__(self, other: Self) -> bool:
+        """Compare if this SnapShot instance is less than or equal to another based on their snapshot times."""
+
+        if isinstance(other, SnapShot):
+            return self.timestamp <= other.timestamp
+        else:
+            return NotImplemented
+
+    def __gt__(self, other: Self) -> bool:
+        """Compare if this SnapShot instance is greater than another based on their snapshot times."""
+
+        if isinstance(other, SnapShot):
+            return self.timestamp > other.timestamp
+        else:
+            return NotImplemented
+
+    def __ge__(self, other: Self) -> bool:
+        """Compare if this SnapShot instance is greater than or equal to another based on their snapshot times."""
+
+        if isinstance(other, SnapShot):
+            return self.timestamp >= other.timestamp
         else:
             return NotImplemented
 
@@ -269,8 +296,7 @@ class MRTParser:
 
         elapsed_time = datetime.now() - start_time
         elapsed_time_formatted = str(elapsed_time).split('.')[0]
-        logger.info(f"Messages Total: {msg_count}\n"
-                    f"Total time elapsed: {elapsed_time_formatted}")
+        logger.info(f"Messages Total: {msg_count} | Total time elapsed: {elapsed_time_formatted}")
 
         return self._freeze_map()
 
