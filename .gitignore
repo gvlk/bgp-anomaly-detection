@@ -2,5 +2,4 @@
 /predict
 /data
 /chart
-/docs/.sphinx_env
-/docs/build
+/docs
