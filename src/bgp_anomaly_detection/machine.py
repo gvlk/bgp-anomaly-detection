@@ -1,8 +1,8 @@
 from collections import Counter
 from copy import deepcopy
+from csv import writer
 from dataclasses import dataclass
 from inspect import getmembers, isdatadescriptor
-from json import dump as json_dump
 from pathlib import Path
 from pickle import dump
 from typing import Iterable
@@ -13,21 +13,11 @@ from scipy.stats import skew, norm
 from .autonomous_system import AS
 from .logging import Logger
 from .mrt_file import SnapShot
-from .paths import Paths
 
 logger = Logger.get_logger(__name__)
 
 
 class Machine:
-    AS_PREDICT = {
-        "location": {"got": str(), "expected": str(), "warning": int()},
-        "mid_path_count": {"got": int(), "expected": float(), "warning": int()},
-        "end_path_count": {"got": int(), "expected": float(), "warning": int()},
-        "path_size": {"got": float(), "expected": float(), "warning": int()},
-        "announced_prefixes": {"got": int(), "expected": float(), "warning": int()},
-        "neighbours": {"got": int(), "expected": float(), "warning": int()},
-    }
-
     __slots__ = ["dataset", "train_data"]
 
     def __init__(self) -> None:
@@ -43,33 +33,42 @@ class Machine:
         self.train_data = dict()
 
     @staticmethod
-    def _save_predictions(snapshot: SnapShot, predict: dict):
-        predict_path = (Paths.PRED_DIR / str(snapshot)).with_suffix(".json")
-        predictions_json = dict()
+    def _save_predictions(snapshot: SnapShot, predictions: dict):
+        # Determine the file name and path
+        save_dir = Path("predictions")
+        save_dir.mkdir(exist_ok=True, parents=True)
+        file_path = save_dir / f"{snapshot.timestamp}_predictions.csv"
 
-        for as_id in snapshot.as_map:
-            predictions_json[as_id] = dict()
-            if as_id not in predict:
-                predictions_json[as_id]["Data"] = "No data"
+        # Prepare data for CSV
+        csv_data = []
+        header = ["AS_ID", "Property", "Warning_Level", "Behaviour"]
+
+        for as_id, as_predictions in predictions.items():
+            if as_predictions is None:
+                row = [
+                    as_id,
+                    None,
+                    None,
+                    None
+                ]
+                csv_data.append(row)
                 continue
+            for property_name, property_prediction in as_predictions.items():
+                row = [
+                    as_id,
+                    property_name,
+                    property_prediction["warning_level"],
+                    property_prediction["behaviour"]
+                ]
+                csv_data.append(row)
 
-            sum_warning_level = 0
-            for metric in predict[as_id]:
-                real = predict[as_id][metric]["real"]
-                expected = predict[as_id][metric]["expected"]
-                warning = predict[as_id][metric]["warning"]
-                sum_warning_level += warning
-                predictions_json[as_id][metric.capitalize()] = {
-                    "Real": real,
-                    "Expected": expected,
-                    "Warning": warning
-                }
-            predictions_json[as_id]["Summed Warning Level"] = sum_warning_level
+        # Write to CSV file
+        with open(file_path, mode='w', newline='') as csvfile:
+            writer_ = writer(csvfile)
+            writer_.writerow(header)
+            writer_.writerows(csv_data)
 
-        with open(predict_path, "w") as file:
-            json_dump(predictions_json, file, indent=4)
-
-        logger.info(f"Prediction saved at: {predict_path}")
+        logger.info(f"Predictions saved to {file_path}")
 
     @staticmethod
     def _get_warning_level(real_value: int | float, expected_value: int | float) -> int:
@@ -176,7 +175,7 @@ class Machine:
 
         logger.info(f"Finished training")
 
-    def predict(self, snapshot: SnapShot, save: bool = False) -> AS_PREDICT:
+    def predict(self, snapshot: SnapShot, save: bool = False) -> dict:
 
         predictions = dict()
 
@@ -235,72 +234,6 @@ class Machine:
             self._save_predictions(snapshot, predictions)
 
         return predictions
-
-    # def export_csv(self, output_file: str | Path) -> None:
-    #
-    #     output_file = output_file.with_suffix(".csv")
-    #
-    #     logger.info(f"Exporting data to {output_file}")
-    #
-    #     csv_data = list()
-    #     for as_id, as_instance in self.known_as.items():
-    #         if as_instance._path_sizes.total() > 0:
-    #             path_sizes = dumps(as_instance._path_sizes)
-    #         else:
-    #             path_sizes = None
-    #         if as_instance._announced_prefixes:
-    #             announced_prefixes = ";".join(as_instance._announced_prefixes)
-    #         else:
-    #             announced_prefixes = None
-    #         if as_instance._neighbours:
-    #             neighbours = ";".join(as_instance._neighbours)
-    #         else:
-    #             neighbours = None
-    #
-    #         csv_data.append({
-    #             "as_id": as_id,
-    #             "location": as_instance._location,
-    #             "mid_path_count": as_instance._mid_path_count,
-    #             "end_path_count": as_instance._end_path_count,
-    #             "path_sizes": path_sizes,
-    #             "announced_prefixes": announced_prefixes,
-    #             "neighbours": neighbours
-    #         })
-    #
-    #     with open(output_file, mode="w", newline="") as csv_file:
-    #         fieldnames = [
-    #             "as_id",
-    #             "location",
-    #             "mid_path_count",
-    #             "end_path_count",
-    #             "path_sizes",
-    #             "announced_prefixes",
-    #             "neighbours"
-    #         ]
-    #         writer = DictWriter(csv_file, fieldnames=fieldnames)
-    #         writer.writeheader()
-    #         writer.writerows(csv_data)
-    #
-    #     logger.info(f"Finished exporting")
-    #
-    # def export_txt(self, output_file: str | Path) -> None:
-    #
-    #     output_file = output_file.with_suffix(".txt")
-    #
-    #     logger.info(f"Exporting data to {output_file}")
-    #
-    #     with open(output_file, "w") as file:
-    #         for as_id, as_instance in self.known_as.items():
-    #             file.write(f"AS {as_id}:\n")
-    #             file.write(f"  Times Seen: {as_instance.times_seen}\n")
-    #             file.write(f"  Mid Path Count: {as_instance._mid_path_count}\n")
-    #             file.write(f"  End Path Count: {as_instance._end_path_count}\n")
-    #             file.write(f"  Path Sizes: {as_instance._path_sizes}\n")
-    #             file.write(f"  Announced Prefixes: {', '.join(as_instance._announced_prefixes)}\n")
-    #             file.write(f"  Neighbours: {', '.join(as_instance._neighbours)}\n")
-    #             file.write("\n")
-    #
-    #     logger.info(f"Finished exporting")
 
     def save(self, output_file: str | Path) -> None:
         with open(output_file, 'wb') as file:
