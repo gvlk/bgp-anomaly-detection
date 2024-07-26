@@ -9,7 +9,8 @@ dependencies = [
     "setuptools", "mrtparse",
     "matplotlib", "pandas",
     "scipy", "pycountry",
-    "frozendict", "requests"
+    "frozendict", "requests",
+    "openpyxl"
 ]
 authors = [
     { name = "Guilherme Azambuja", email = "guilhermevazambuja@gmail.com" }
