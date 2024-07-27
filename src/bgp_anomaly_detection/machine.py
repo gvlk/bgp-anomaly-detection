@@ -2,12 +2,12 @@ from collections import Counter
 from copy import deepcopy
 from csv import writer
 from dataclasses import dataclass
-from inspect import getmembers, isdatadescriptor
 from pathlib import Path
 from pickle import dump
 from typing import Iterable
 
 import numpy as np
+from pandas import ExcelWriter, DataFrame
 from scipy.stats import skew, norm
 
 from .autonomous_system import AS
@@ -34,51 +34,54 @@ class Machine:
 
     @staticmethod
     def _save_predictions(snapshot: SnapShot, predictions: dict):
-        # Determine the file name and path
-        save_dir = Path("predictions")
-        save_dir.mkdir(exist_ok=True, parents=True)
-        file_path = save_dir / f"{snapshot.timestamp}_predictions.csv"
 
-        # Prepare data for CSV
-        csv_data = []
-        header = ["AS_ID", "Property", "Warning_Level", "Behaviour"]
+        formatted_timestamp = snapshot.timestamp.strftime("%Y%m%d.%H%M")
+        i = 1
+        while True:
+            save_dir = Path("predict", formatted_timestamp + f"_{i:0>2}")
+            if not save_dir.exists():
+                break
+            i += 1
+        save_dir.mkdir()
+
+        as_property_names = AS.get_property_names()
+        csv_data = {prty: list() for prty in as_property_names}
+        total_warning_level = list()
 
         for as_id, as_predictions in predictions.items():
             if as_predictions is None:
-                row = [
-                    as_id,
-                    None,
-                    None,
-                    None
-                ]
-                csv_data.append(row)
+                for property_name in as_property_names:
+                    csv_data[property_name].append((as_id, None, None))
                 continue
+            total_warning_level.append([as_id, int()])
             for property_name, property_prediction in as_predictions.items():
-                row = [
+                csv_data[property_name].append((
                     as_id,
-                    property_name,
                     property_prediction["warning_level"],
                     property_prediction["behaviour"]
-                ]
-                csv_data.append(row)
+                ))
+                total_warning_level[-1][1] += property_prediction["warning_level"]
 
-        # Write to CSV file
-        with open(file_path, mode='w', newline='') as csvfile:
+        header1 = ("AS_ID", "Warning_Level")
+        header2 = ("AS_ID", "Warning_Level", "Behaviour")
+        with open(save_dir / "as_warning_level", mode="w", newline="") as csvfile:
             writer_ = writer(csvfile)
-            writer_.writerow(header)
-            writer_.writerows(csv_data)
+            writer_.writerow(header1)
+            writer_.writerows(total_warning_level)
+        for property_name in as_property_names:
+            with open(save_dir / property_name, mode="w", newline="") as csvfile:
+                writer_ = writer(csvfile)
+                writer_.writerow(header2)
+                writer_.writerows(csv_data[property_name])
 
-        logger.info(f"Predictions saved to {file_path}")
+        with ExcelWriter(save_dir / "predict.xlsx", engine="openpyxl") as exc_writer:
+            df_warning_levels = DataFrame(total_warning_level, columns=header1)
+            df_warning_levels.to_excel(exc_writer, sheet_name="as_warning_levels", index=False)
+            for property_name in as_property_names:
+                df = DataFrame(csv_data[property_name], columns=header2)
+                df.to_excel(exc_writer, sheet_name=property_name, index=False)
 
-    @staticmethod
-    def _get_warning_level(real_value: int | float, expected_value: int | float) -> int:
-        difference = abs((real_value - expected_value) / max(expected_value, 1))
-        if 0.0 <= difference <= 1.50:
-            return 0
-        elif difference <= 3.0:
-            return 1
-        else:
-            return 2
+        logger.info(f"Predictions saved in {save_dir}")
 
     def train(self, snapshots: SnapShot | Iterable[SnapShot]) -> None:
         """
@@ -94,11 +97,7 @@ class Machine:
 
         # Initialize dictionaries and templates for storing AS history and statistical properties
         as_history = dict()
-        as_special_property_names = ("id", "announced_prefixes", "neighbours")
-        as_property_names = tuple(
-            prty for prty, _ in getmembers(AS, isdatadescriptor)
-            if prty not in as_special_property_names
-        )
+        as_property_names = AS.get_property_names()
         as_history_template = {
             prty: list() for prty in as_property_names
         }
@@ -175,15 +174,11 @@ class Machine:
 
         logger.info(f"Finished training")
 
-    def predict(self, snapshot: SnapShot, save: bool = False) -> dict:
+    def predict(self, snapshot: SnapShot, save: bool = True) -> dict:
 
         predictions = dict()
 
-        as_special_property_names = ("id", "announced_prefixes", "neighbours", "path_sizes")
-        as_property_names = tuple(
-            prty for prty, _ in getmembers(AS, isdatadescriptor)
-            if prty not in as_special_property_names
-        )
+        as_property_names = AS.get_property_names()
         as_prediction_template = {
             "warning_level": int(),
             "behaviour": int()
@@ -220,7 +215,7 @@ class Machine:
                     if probability < 0.05 or probability > 0.95:
                         prty_predict["warning_level"] += 2
 
-                threshold = 0.1
+                threshold = 0.2
                 if slope > threshold:
                     prty_predict["behaviour"] = 1
                 elif slope < -threshold:
