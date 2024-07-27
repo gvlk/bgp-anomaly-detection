@@ -1,10 +1,12 @@
 # TODO: montar um modulo de interface que contenha funções (sequências) que uso frequentemente
-
 from datetime import datetime, timedelta
+from pickle import load
 
 import requests
 
 from .logging import Logger
+from .machine import Machine
+from .mrt_file import SnapShot
 from .paths import Paths
 
 logger = Logger.get_logger(__name__)
@@ -59,3 +61,11 @@ def download_bgp_snapshots(start_date: datetime, end_date: datetime):
 
     total_size_gb = total_size / (1024 ** 3)
     logger.info(f"{file_count} files downloaded, total size: {total_size_gb:.2f} GB, saved at: {save_dir}")
+
+
+def get_machine(name: str) -> Machine:
+    logger.info(f"Loading '{name}' machine")
+    machine_path = (Paths.MODEL_DIR / name).with_suffix(".pkl")
+    with open(machine_path, "rb") as file:
+        machine = load(file)
+    return machine
