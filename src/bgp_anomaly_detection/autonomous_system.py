@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from inspect import getmembers, isdatadescriptor
 from ipaddress import ip_address, IPv4Address
 from typing import Self
 
@@ -71,6 +72,13 @@ class AS:
     @property
     def total_neighbours(self) -> int:
         return len(self.neighbours)
+
+    @classmethod
+    def get_property_names(cls) -> tuple[str, ...]:
+        return tuple(
+            prty for prty, _ in getmembers(cls, isdatadescriptor)
+            if prty not in ("id", "announced_prefixes", "neighbours", "path_sizes")
+        )
 
     def export_json(self) -> dict[str, str | int | float | tuple]:
         return {
