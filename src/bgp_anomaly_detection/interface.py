@@ -6,13 +6,21 @@ import requests
 
 from .logging import Logger
 from .machine import Machine
-from .mrt_file import SnapShot
 from .paths import Paths
 
 logger = Logger.get_logger(__name__)
 
 
-def download_bgp_snapshots(start_date: datetime, end_date: datetime):
+def download_bgp_snapshots(start_date: datetime, end_date: datetime, step: int):
+    """
+    Downloads BGP snapshots between start_date and end_date with a specified step in hours.
+    The step indicates the interval between snapshot downloads and must be at least 2 hours.
+    """
+
+    if step < 2:
+        logger.info(f"Step size {step} is too small. Adjusting to 2 hours.")
+        step = 2
+
     if start_date.minute != 0:
         start_date = start_date.replace(minute=0, second=0, microsecond=0)
     if start_date.hour % 2 != 0:
@@ -23,15 +31,16 @@ def download_bgp_snapshots(start_date: datetime, end_date: datetime):
     if end_date.hour % 2 != 0:
         end_date -= timedelta(hours=1)
 
-    save_dir = Paths.RAW_DIR / f"{start_date.strftime("%Y%m%d.%H%M")}-{end_date.strftime("%Y%m%d.%H%M")}"
+    save_dir = Paths.RAW_DIR / f"{start_date.strftime('%Y%m%d.%H%M')}-{end_date.strftime('%Y%m%d.%H%M')}"
     save_dir.mkdir(exist_ok=True, parents=True)
 
     current_date = start_date
-    file_count = int()
-    total_size = int()
+    file_count = 0
+    total_size = 0
 
     logger.info(
-        f"Downloading files from {start_date.strftime('%d/%m/%Y %H:%M')} to {end_date.strftime('%d/%m/%Y %H:%M')}"
+        f"Downloading files from {start_date.strftime('%d/%m/%Y %H:%M')} to {end_date.strftime('%d/%m/%Y %H:%M')} "
+        f"with a step of {step} hours."
     )
 
     while current_date <= end_date:
@@ -57,7 +66,7 @@ def download_bgp_snapshots(start_date: datetime, end_date: datetime):
         else:
             file_count += 1
 
-        current_date += timedelta(hours=2)
+        current_date += timedelta(hours=step)
 
     total_size_gb = total_size / (1024 ** 3)
     logger.info(f"{file_count} files downloaded, total size: {total_size_gb:.2f} GB, saved at: {save_dir}")
